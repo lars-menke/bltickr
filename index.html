@@ -408,7 +408,7 @@ async function initLeague() {
     groups = await apiFetch(`/getavailablegroups/${curLeague}/${SEASON}`);
     groups.sort((a,b)=>a.groupOrderID-b.groupOrderID);
     let cur;
-    try { cur = await apiFetch(`/getcurrentgroup/${curLeague}`); }
+    try { cur = await apiFetch(`/getcurrentgroup/${curLeague}/${SEASON}`); }
     catch { cur = groups[groups.length-1]; }
     curGID = cur.groupOrderID;
     if (curLeague === 'bl1') usingEmbedded = false;
