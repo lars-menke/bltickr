@@ -333,7 +333,7 @@ main{padding-bottom:48px}
 </div>
 
 <script>
-const APP_VERSION = 'v1.4.0';
+const APP_VERSION = 'v1.5.0';
 // ── EMBEDDED REAL DATA (Spieltag 24, Stand 27.02.2026) ──
 // Embedded data intentionally empty — app always loads live from OpenLigaDB
 const EMBEDDED = {
@@ -408,10 +408,7 @@ async function initLeague() {
   try {
     groups = await apiFetch(`/getavailablegroups/${curLeague}/${SEASON}`);
     groups.sort((a,b)=>a.groupOrderID-b.groupOrderID);
-    let cur;
-    try { cur = await apiFetch(`/getcurrentgroup/${curLeague}/${SEASON}`); }
-    catch { cur = groups[groups.length-1]; }
-    curGID = cur.groupOrderID;
+    curGID = await findClosestGroupID(groups);
     if (curLeague === 'bl1') usingEmbedded = false;
   } catch(e) {
     if (curLeague === 'bl1') {
@@ -432,6 +429,43 @@ async function initLeague() {
   renderNav();
   await loadMD(curGID);
   loadTable(); // Tabelle im Hintergrund vorausladen
+}
+
+// Findet per Binärsuche den Spieltag, dessen Mitteldatum am nächsten an heute liegt.
+// Cached Spieltage automatisch → loadMD braucht keinen Extra-Call für den Treffer.
+async function findClosestGroupID(groups) {
+  const now = new Date();
+  const minGID = groups[0].groupOrderID;
+  const maxGID = groups[groups.length-1].groupOrderID;
+
+  async function getCenter(gid) {
+    if (!cache[gid]) {
+      try { cache[gid] = await apiFetch(`/getmatchdata/${curLeague}/${SEASON}/${gid}`); }
+      catch { cache[gid] = []; }
+    }
+    const ms = cache[gid];
+    if (!ms.length) return null;
+    const ts = ms.map(m => new Date(m.matchDateTimeUTC).getTime());
+    return new Date(ts.reduce((a,b)=>a+b,0) / ts.length);
+  }
+
+  // Binärsuche: Grenze finden wo Spieltag-Mitteldatum today überschreitet
+  let lo = minGID, hi = maxGID;
+  while (hi - lo > 2) {
+    const mid = Math.floor((lo + hi) / 2);
+    const c = await getCenter(mid);
+    if (!c || c <= now) lo = mid; else hi = mid;
+  }
+
+  // Unter den 3 Kandidaten den nächstgelegenen wählen
+  let bestGID = lo, bestDist = Infinity;
+  for (let gid = lo; gid <= Math.min(hi, maxGID); gid++) {
+    const c = await getCenter(gid);
+    if (!c) continue;
+    const d = Math.abs(c - now);
+    if (d < bestDist) { bestDist = d; bestGID = gid; }
+  }
+  return bestGID;
 }
 
 async function switchLeague(league) {
