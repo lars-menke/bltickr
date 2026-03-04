@@ -107,11 +107,20 @@ function getScore(m) {
 
 // Separater Snapshot pro Liga
 const snapshots = { bl1: {}, bl2: {} };
+const lastChangeDates = { bl1: null, bl2: null };
 
 async function pollLeague(leagueId) {
   const snap = snapshots[leagueId];
   const leagueLabel = leagueId === 'bl2' ? ' · 2. BL' : '';
   const group = await fetch(OPENLIGA_API + '/getcurrentgroup/' + leagueId).then(r => r.json());
+
+  const changeDate = await fetch(OPENLIGA_API + '/getlastchangedate/' + leagueId + '/' + SEASON + '/' + group.groupOrderID).then(r => r.text());
+  if (changeDate === lastChangeDates[leagueId]) {
+    console.log('[poll] ' + leagueId.toUpperCase() + ' keine Änderung, skip');
+    return;
+  }
+  lastChangeDates[leagueId] = changeDate;
+
   const matches = await fetch(OPENLIGA_API + '/getmatchdata/' + leagueId + '/' + SEASON + '/' + group.groupOrderID).then(r => r.json());
   const newSnap = {};
   for (const m of matches) {
