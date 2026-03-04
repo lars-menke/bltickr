@@ -40,8 +40,9 @@ header{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px 
 .hdr-title{font-family:'Bebas Neue',sans-serif;font-size:1.35rem;letter-spacing:5px;color:var(--acc);line-height:1}
 .hdr-sub{font-family:'DM Mono',monospace;font-size:.52rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);margin-top:1px}
 .hdr-sp{flex:1}
-.live-badge{font-family:'DM Mono',monospace;font-size:.57rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--red);border:1px solid var(--red);padding:2px 8px;border-radius:3px;animation:blink 1.4s ease-in-out infinite;display:none}
+.live-badge{font-family:'DM Mono',monospace;font-size:.57rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--red);border:1px solid var(--red);padding:2px 8px;border-radius:3px;animation:blink 1.4s ease-in-out infinite;display:none;user-select:none}
 .live-badge.on{display:block}
+.live-badge.link{cursor:pointer;color:var(--acc);border-color:var(--acc)}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 .hdr-btn{background:var(--s2);border:1px solid var(--border2);border-radius:4px;color:var(--muted2);cursor:pointer;font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:1px;text-transform:uppercase;padding:5px 10px;display:flex;align-items:center;gap:5px;transition:color 150ms,border-color 150ms;white-space:nowrap}
 .hdr-btn:hover{color:var(--white);border-color:var(--acc)}
@@ -332,7 +333,7 @@ main{padding-bottom:48px}
 </div>
 
 <script>
-const APP_VERSION = 'v1.5.1';
+const APP_VERSION = 'v1.6.0';
 // ── EMBEDDED REAL DATA (Spieltag 24, Stand 27.02.2026) ──
 // Embedded data intentionally empty — app always loads live from OpenLigaDB
 const EMBEDDED = {
@@ -389,8 +390,19 @@ const ABBR = {
 };
 
 let groups=[], curGID=null, cache={}, curMatches=[], usingEmbedded=false;
+let liveGID=null; // Spieltag mit aktiven Live-Spielen (ligaweit, unabhängig von curGID)
 let tableData=null, tableData2=null, goalGettersData=null, goalGettersData2=null, curView='spiele';
 let favorites = new Set(JSON.parse(localStorage.getItem('bl_favorites') || '[]'));
+
+function updateLiveBadge() {
+  const badge = document.getElementById('liveBadge');
+  const isOn = liveGID !== null;
+  const isLink = isOn && liveGID !== curGID;
+  badge.classList.toggle('on', isOn);
+  badge.classList.toggle('link', isLink);
+  badge.title = isLink ? `Live-Spieltag ${liveGID} anzeigen` : '';
+  badge.onclick = isLink ? () => selMD(liveGID) : null;
+}
 
 async function apiFetch(path) {
   const r = await fetch(API + path, {signal: AbortSignal.timeout(6000)});
@@ -400,7 +412,7 @@ async function apiFetch(path) {
 
 async function initLeague() {
   // Reset per-league state
-  groups = []; curGID = null; cache = {}; curMatches = []; matchSnapshot = {};
+  groups = []; curGID = null; cache = {}; curMatches = []; matchSnapshot = {}; liveGID = null;
   clearTimeout(refreshTimer);
   document.getElementById('mdNav').innerHTML = '<div style="display:flex;align-items:center;padding:0 8px"><div class="spin" style="width:18px;height:18px;border-width:2px"></div></div>';
 
@@ -529,7 +541,7 @@ function renderNav() {
 
 async function selMD(gid) {
   clearTimeout(refreshTimer);
-  curGID=gid; renderNav(); await loadMD(gid);
+  curGID=gid; renderNav(); updateLiveBadge(); await loadMD(gid);
 }
 
 async function loadMD(gid) {
@@ -567,7 +579,9 @@ function renderMD() {
   }
   const now=new Date();
   const hasLive=curMatches.some(m=>!m.matchIsFinished&&new Date(m.matchDateTimeUTC)<=now);
-  document.getElementById('liveBadge').classList.toggle('on',hasLive);
+  if (hasLive) liveGID=curGID;
+  else if (liveGID===curGID) liveGID=null;
+  updateLiveBadge();
 
   const byDate={};
   curMatches.forEach(m=>{
@@ -927,7 +941,7 @@ function hasUpcomingKickoff(matches) {
 function scheduleRefresh(matches) {
   clearTimeout(refreshTimer);
   if (usingEmbedded) return; // no live data in preview mode
-  const needsLive = hasLiveMatches(matches) || hasUpcomingKickoff(matches);
+  const needsLive = hasLiveMatches(matches) || hasUpcomingKickoff(matches) || liveGID !== null;
   if (needsLive) {
     refreshTimer = setTimeout(() => autoRefresh(), REFRESH_INTERVAL);
     updateRefreshTs();
@@ -992,6 +1006,17 @@ async function autoRefresh() {
     if (anyLive || anyFinished) {
       if (curLeague === 'bl2') tableData2 = null; else tableData = null;
       if (curView === 'tabelle') loadTable();
+    }
+
+    // Background-Check: liveGID aktuell halten wenn User auf anderem Spieltag blättert
+    if (liveGID && liveGID !== curGID) {
+      apiFetch(`/getmatchdata/${curLeague}/${SEASON}/${liveGID}`)
+        .then(liveMatches => {
+          cache[liveGID] = liveMatches;
+          if (!hasLiveMatches(liveMatches)) { liveGID = null; }
+          updateLiveBadge();
+        })
+        .catch(() => {});
     }
 
     scheduleRefresh(fresh);
