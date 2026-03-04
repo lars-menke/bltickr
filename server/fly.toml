@@ -10,6 +10,10 @@ primary_region = 'fra'
   auto_stop_machines = 'off'
   min_machines_running = 1
 
+[[mounts]]
+  source = "bl_data"
+  destination = "/data"
+
 [[vm]]
   memory = '256mb'
   cpu_kind = 'shared'

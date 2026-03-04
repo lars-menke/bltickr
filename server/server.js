@@ -23,7 +23,7 @@ try {
 }
 
 // ── Subscriptions ──
-const SUBS_FILE = path.join(__dirname, 'data', 'subscriptions.json');
+const SUBS_FILE = '/data/subscriptions.json';
 let subscriptions = {};
 
 function loadSubs() {
