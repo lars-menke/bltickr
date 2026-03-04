@@ -69,9 +69,11 @@ async function sendToFiltered(payload, teams) {
       await webpush.sendNotification(subscription, JSON.stringify(payload));
     } catch (err) {
       console.error('[push] Fehler bei', key, '— Status:', err.statusCode, err.message);
-      if (err.statusCode === 410 || err.statusCode === 404) {
+      if (err.statusCode === 410 || err.statusCode === 404 ||
+          (err.statusCode === 400 && err.body?.includes('VapidPkHashMismatch'))) {
         delete subscriptions[key];
         saveSubs();
+        console.log('[push] Subscription entfernt:', key);
       }
     }
   }));
@@ -173,10 +175,20 @@ async function handlePushTest(req, res) {
   const results = await Promise.allSettled(
     Object.keys(subscriptions).map(async key => {
       const { subscription } = subscriptions[key];
-      await webpush.sendNotification(subscription, JSON.stringify({
-        type: 'tor', title: 'Push-Test vs BL Tick-R',
-        body: "⚽ Tor! 2:1 (90+2')\nMüller · Push-Pipeline funktioniert ✓", matchId: 'test',
-      }));
+      try {
+        await webpush.sendNotification(subscription, JSON.stringify({
+          type: 'tor', title: 'Push-Test vs BL Tick-R',
+          body: "⚽ Tor! 2:1 (90+2')\nMüller · Push-Pipeline funktioniert ✓", matchId: 'test',
+        }));
+      } catch (err) {
+        if (err.statusCode === 410 || err.statusCode === 404 ||
+            (err.statusCode === 400 && err.body?.includes('VapidPkHashMismatch'))) {
+          delete subscriptions[key];
+          saveSubs();
+          console.log('[push-test] Subscription entfernt:', key);
+        }
+        throw err;
+      }
       return key;
     })
   );
