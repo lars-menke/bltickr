@@ -37,7 +37,7 @@ bltickr/
 
 **Deployment**
 - Backend: Fly.io (`bltickr`, Region Frankfurt)
-- Frontend: Netlify (VAPID Public Key als Meta-Tag eingebettet)
+- Frontend: GitHub Pages (VAPID Public Key als Meta-Tag eingebettet)
 
 ## API-Endpoints (Backend)
 
