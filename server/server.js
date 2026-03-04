@@ -181,8 +181,11 @@ async function handlePushTest(req, res) {
     })
   );
   const ok = results.filter(r => r.status === 'fulfilled').length;
-  const errs = results.filter(r => r.status === 'rejected').map(r => r.reason?.message || r.reason?.statusCode);
-  console.log('[push-test] OK:', ok, 'Fehler:', errs);
+  const errs = results.filter(r => r.status === 'rejected').map(r => {
+    const e = r.reason;
+    return { status: e?.statusCode, message: e?.message, body: e?.body };
+  });
+  console.log('[push-test] OK:', ok, 'Fehler:', JSON.stringify(errs));
   res.json({ ok: ok > 0, subscribers: count, sent: ok, errors: errs });
 }
 
