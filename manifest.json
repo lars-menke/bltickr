@@ -1,0 +1,19 @@
+{
+  "name": "BL TICK-R",
+  "short_name": "BL TICK-R",
+  "description": "Bundesliga Live-Ticker im Lambdark Design",
+  "display": "standalone",
+  "start_url": "/bltickr/",
+  "scope": "/bltickr/",
+  "background_color": "#08080e",
+  "theme_color": "#08080e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

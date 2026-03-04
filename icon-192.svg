@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="38" fill="#08080e"/>
+  <!-- Outer hexagon frame -->
+  <polygon points="96,12 168,54 168,138 96,180 24,138 24,54"
+           stroke="#e4ff3c" stroke-width="4.5" fill="none"/>
+  <!-- Football: central pentagon -->
+  <polygon points="96,72 111,83 105,100 87,100 81,83"
+           stroke="#e4ff3c" stroke-width="3.5" fill="none"/>
+  <!-- Football: surrounding patches -->
+  <polygon points="96,44 116,56 116,72 96,72 80,56"
+           stroke="#e4ff3c" stroke-width="2.5" fill="rgba(228,255,60,0.08)"/>
+  <polygon points="116,72 134,76 137,93 122,103 105,100 111,83"
+           stroke="#e4ff3c" stroke-width="2.5" fill="rgba(228,255,60,0.08)"/>
+  <polygon points="111,102 116,120 98,132 82,122 81,100 105,100"
+           stroke="#e4ff3c" stroke-width="2.5" fill="rgba(228,255,60,0.08)"/>
+  <polygon points="81,83 87,100 82,122 62,118 54,100 58,78"
+           stroke="#e4ff3c" stroke-width="2.5" fill="rgba(228,255,60,0.08)"/>
+  <polygon points="76,54 96,44 116,56 111,72 81,72 72,58"
+           stroke="#e4ff3c" stroke-width="2.5" fill="rgba(228,255,60,0.08)"/>
+  <!-- Corner dots -->
+  <circle cx="96"  cy="12"  r="5" fill="#3cffe0"/>
+  <circle cx="168" cy="54"  r="5" fill="#3cffe0"/>
+  <circle cx="168" cy="138" r="5" fill="#3cffe0"/>
+  <circle cx="96"  cy="180" r="5" fill="#3cffe0"/>
+  <circle cx="24"  cy="138" r="5" fill="#3cffe0"/>
+  <circle cx="24"  cy="54"  r="5" fill="#3cffe0"/>
+</svg>
