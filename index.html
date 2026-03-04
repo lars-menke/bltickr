@@ -470,12 +470,14 @@ async function switchLeague(league) {
     if (existingSub && Notification.permission === 'granted') {
       notificationsEnabled = true;
       updateNotifBtn();
-      // Server nach Neustart wieder informieren (fire & forget)
+      // Server nach Neustart wieder informieren (fire & forget) — Key aktualisieren
       fetch(`${SERVER_URL}/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...existingSub.toJSON(), favorites: [...favorites] }),
-      }).catch(() => {});
+      }).then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.key) localStorage.setItem('bl_push_key', d.key); })
+        .catch(() => {});
     }
   }
 
@@ -1237,11 +1239,22 @@ async function sendPushTest() {
 
   try {
     const pushKey = localStorage.getItem('bl_push_key');
-    const res = await fetch(`${SERVER_URL}/push-test`, {
+    let res = await fetch(`${SERVER_URL}/push-test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: pushKey ? JSON.stringify({ key: pushKey }) : undefined,
     });
+
+    // Key veraltet (Server-Neustart) → neu registrieren und einmal wiederholen
+    if (res.status === 404 && pushKey) {
+      await subscribeToPush().catch(() => {});
+      const freshKey = localStorage.getItem('bl_push_key');
+      res = await fetch(`${SERVER_URL}/push-test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: freshKey ? JSON.stringify({ key: freshKey }) : undefined,
+      });
+    }
 
     if (res.status === 202 || res.ok) {
       showToast('📡', 'Test gesendet', 'Push kommt gleich');
