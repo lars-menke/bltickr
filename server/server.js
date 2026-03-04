@@ -233,6 +233,80 @@ function adminAuth(req, res) {
   return true;
 }
 
+app.get('/admin', (req, res) => {
+  res.send(`<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BL TICK-R Admin</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#08080e;color:#e0e0e0;font-family:'DM Sans',sans-serif;padding:2rem;min-height:100vh}
+  h1{font-family:'Bebas Neue',sans-serif;color:#e4ff3c;font-size:2.5rem;letter-spacing:.1em;margin-bottom:1.5rem}
+  .login{max-width:400px}
+  input{background:#13131f;border:1px solid #2a2a3e;color:#e0e0e0;padding:.75rem 1rem;border-radius:.5rem;width:100%;font-size:1rem;margin-bottom:.75rem}
+  input:focus{outline:2px solid #e4ff3c;border-color:transparent}
+  button{background:#e4ff3c;color:#08080e;border:none;padding:.75rem 1.5rem;border-radius:.5rem;font-weight:700;cursor:pointer;font-size:.9rem;letter-spacing:.05em}
+  button:hover{background:#f0ff6a}
+  button.del{background:#ff4d6a;color:#fff;padding:.4rem .9rem;font-size:.8rem}
+  button.del:hover{background:#ff6b82}
+  .card{background:#13131f;border:1px solid #1e1e2e;border-radius:.75rem;padding:1.25rem;margin-bottom:.75rem}
+  .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+  .key{font-family:'DM Mono',monospace;color:#e4ff3c;font-size:.85rem}
+  .meta{font-size:.8rem;color:#666;margin-top:.25rem}
+  .favs{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.5rem}
+  .fav{background:#1e1e2e;border-radius:.25rem;padding:.15rem .5rem;font-size:.75rem;color:#3cffe0}
+  .count{color:#3cffe0;font-size:.9rem;margin-bottom:1rem}
+  .error{color:#ff4d6a;margin-top:.5rem;font-size:.9rem}
+  .success{color:#3cff8f;margin-top:.5rem;font-size:.9rem}
+</style>
+</head><body>
+<h1>BL TICK-R · Admin</h1>
+<div id="app">
+  <div class="login">
+    <input id="secret" type="password" placeholder="Admin-Passwort" />
+    <button onclick="load()">Subscriptions laden</button>
+    <div id="msg"></div>
+  </div>
+  <div id="list" style="margin-top:1.5rem"></div>
+</div>
+<script>
+let currentSecret = '';
+async function load() {
+  currentSecret = document.getElementById('secret').value;
+  const msg = document.getElementById('msg');
+  try {
+    const r = await fetch('/admin/subscriptions?secret=' + encodeURIComponent(currentSecret));
+    if (r.status === 401) { msg.className='error'; msg.textContent='Falsches Passwort'; return; }
+    const data = await r.json();
+    msg.textContent = '';
+    render(data);
+  } catch(e) { msg.className='error'; msg.textContent='Fehler: ' + e.message; }
+}
+function render({count, subscriptions}) {
+  const el = document.getElementById('list');
+  if (count === 0) { el.innerHTML='<p style="color:#666">Keine Subscriptions.</p>'; return; }
+  el.innerHTML = '<div class="count">' + count + ' Subscriber</div>' +
+    subscriptions.map(s => \`
+      <div class="card" id="card-\${s.key}">
+        <div class="card-head">
+          <span class="key">\${s.key}</span>
+          <button class="del" onclick="del('\${s.key}')">Löschen</button>
+        </div>
+        <div class="meta">\${s.endpoint}</div>
+        <div class="meta">Registriert: \${new Date(s.createdAt).toLocaleString('de-DE')}</div>
+        \${s.favorites.length ? '<div class="favs">' + s.favorites.map(f=>'<span class="fav">'+f+'</span>').join('') + '</div>' : '<div class="meta">Favoriten: alle</div>'}
+      </div>\`).join('');
+}
+async function del(key) {
+  if (!confirm('Subscription ' + key + ' wirklich löschen?')) return;
+  const r = await fetch('/admin/subscriptions/' + key + '?secret=' + encodeURIComponent(currentSecret), { method: 'DELETE' });
+  if (r.ok) { document.getElementById('card-' + key)?.remove(); }
+  else alert('Fehler beim Löschen');
+}
+document.getElementById('secret').addEventListener('keydown', e => e.key==='Enter' && load());
+</script>
+</body></html>`);
+});
+
 app.get('/admin/subscriptions', (req, res) => {
   if (!adminAuth(req, res)) return;
   const list = Object.entries(subscriptions).map(([key, s]) => ({
