@@ -172,8 +172,14 @@ app.post('/subscribe', (req, res) => {
 async function handlePushTest(req, res) {
   const count = Object.keys(subscriptions).length;
   if (count === 0) return res.json({ ok: false, subscribers: 0, error: 'Keine Subscriber' });
+  const filterKey = req.query.key || req.body?.key;
+  const keys = filterKey
+    ? (subscriptions[filterKey] ? [filterKey] : [])
+    : Object.keys(subscriptions);
+  if (filterKey && keys.length === 0)
+    return res.status(404).json({ ok: false, error: 'Subscriber nicht gefunden' });
   const results = await Promise.allSettled(
-    Object.keys(subscriptions).map(async key => {
+    keys.map(async key => {
       const { subscription } = subscriptions[key];
       try {
         await webpush.sendNotification(subscription, JSON.stringify({
