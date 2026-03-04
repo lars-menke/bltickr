@@ -68,6 +68,7 @@ async function sendToFiltered(payload, teams) {
     try {
       await webpush.sendNotification(subscription, JSON.stringify(payload));
     } catch (err) {
+      console.error('[push] Fehler bei', key, '— Status:', err.statusCode, err.message);
       if (err.statusCode === 410 || err.statusCode === 404) {
         delete subscriptions[key];
         saveSubs();
@@ -166,15 +167,27 @@ app.post('/subscribe', (req, res) => {
   res.status(201).json({ ok: true, key });
 });
 
-app.get('/push-test', async (req, res) => {
-  res.json({ ok: true, subscribers: Object.keys(subscriptions).length });
-  await sendToAll({ type: 'tor', title: 'Push-Test vs BL Tick-R', body: "⚽ Tor! 2:1 (90+2')\nMüller · Push-Pipeline funktioniert ✓", matchId: 'test' });
-});
+async function handlePushTest(req, res) {
+  const count = Object.keys(subscriptions).length;
+  if (count === 0) return res.json({ ok: false, subscribers: 0, error: 'Keine Subscriber' });
+  const results = await Promise.allSettled(
+    Object.keys(subscriptions).map(async key => {
+      const { subscription } = subscriptions[key];
+      await webpush.sendNotification(subscription, JSON.stringify({
+        type: 'tor', title: 'Push-Test vs BL Tick-R',
+        body: "⚽ Tor! 2:1 (90+2')\nMüller · Push-Pipeline funktioniert ✓", matchId: 'test',
+      }));
+      return key;
+    })
+  );
+  const ok = results.filter(r => r.status === 'fulfilled').length;
+  const errs = results.filter(r => r.status === 'rejected').map(r => r.reason?.message || r.reason?.statusCode);
+  console.log('[push-test] OK:', ok, 'Fehler:', errs);
+  res.json({ ok: ok > 0, subscribers: count, sent: ok, errors: errs });
+}
 
-app.post('/push-test', async (req, res) => {
-  res.json({ ok: true, subscribers: Object.keys(subscriptions).length });
-  await sendToAll({ type: 'tor', title: 'Push-Test vs BL Tick-R', body: "⚽ Tor! 2:1 (90+2')\nMüller · Push-Pipeline funktioniert ✓", matchId: 'test' });
-});
+app.get('/push-test', handlePushTest);
+app.post('/push-test', handlePushTest);
 
 app.get('/health', (req, res) => {
   res.json({ ok: true, subscribers: Object.keys(subscriptions).length, window: isMatchWindow() });
