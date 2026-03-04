@@ -66,7 +66,7 @@ async function sendToFiltered(payload, teams) {
       if (!match) return;
     }
     try {
-      await webpush.sendNotification(subscription, JSON.stringify(payload));
+      await webpush.sendNotification(subscription, JSON.stringify(payload), { TTL: 300, urgency: 'high' });
     } catch (err) {
       console.error('[push] Fehler bei', key, '— Status:', err.statusCode, err.message);
       if (err.statusCode === 410 || err.statusCode === 404 ||
@@ -194,7 +194,7 @@ async function handlePushTest(req, res) {
         await webpush.sendNotification(subscription, JSON.stringify({
           type: 'tor', title: 'Push-Test vs BL Tick-R',
           body: "⚽ Tor! 2:1 (90+2')\nMüller · Push-Pipeline funktioniert ✓", matchId: 'test',
-        }));
+        }), { TTL: 300, urgency: 'high' });
       } catch (err) {
         if (err.statusCode === 410 || err.statusCode === 404 ||
             (err.statusCode === 400 && err.body?.includes('VapidPkHashMismatch'))) {

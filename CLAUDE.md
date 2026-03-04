@@ -78,6 +78,15 @@ Polling nur in diesen Zeitfenstern aktiv:
 ```
 Fonts: Bebas Neue (Headlines), DM Mono (Zahlen/Code), DM Sans (Text)
 
+## Versionierung
+
+Die Versionsnummer wird in `server/package.json` gepflegt und bei jeder Änderung am Backend hochgezogen:
+- **Patch** (z.B. `1.2.6 → 1.2.7`): Bugfixes, kleine Anpassungen
+- **Minor** (z.B. `1.2.x → 1.3.0`): Neue Features, Optimierungen
+- **Major** (z.B. `1.x.x → 2.0.0`): Breaking Changes, Architekturwechsel
+
+Aktuelle Version: `1.2.7`
+
 ## Hinweise
 
 - Das Frontend liegt als `index (1).html` — Leerzeichen im Dateinamen beachten
