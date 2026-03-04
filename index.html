@@ -303,7 +303,6 @@ main{padding-bottom:48px}
   <div class="league-seg">
     <button class="lseg" id="lseg-bl1" onclick="switchLeague('bl1')">1. BL</button>
     <button class="lseg" id="lseg-bl2" onclick="switchLeague('bl2')">2. BL</button>
-    <button class="lseg" id="lseg-pokal" onclick="switchLeague('dfb-pokal')">DFB-Pokal</button>
   </div>
   <div class="league-seg">
     <button class="lseg active" id="tabSpiele" onclick="switchView('spiele')">Spieltag</button>
@@ -333,7 +332,7 @@ main{padding-bottom:48px}
 </div>
 
 <script>
-const APP_VERSION = 'v1.5.0';
+const APP_VERSION = 'v1.5.1';
 // ── EMBEDDED REAL DATA (Spieltag 24, Stand 27.02.2026) ──
 // Embedded data intentionally empty — app always loads live from OpenLigaDB
 const EMBEDDED = {
@@ -345,7 +344,7 @@ const EMBEDDED = {
 const API = 'https://api.openligadb.de';
 const SEASON = '2025';
 const SERVER_URL = 'https://bltickr.fly.dev';
-let curLeague = localStorage.getItem('bl_league') || 'bl1';
+let curLeague = (['bl1','bl2'].includes(localStorage.getItem('bl_league')) ? localStorage.getItem('bl_league') : 'bl1');
 
 // Embedded table fallback (2024/25 final standings — used when API unreachable)
 const EMBEDDED_TABLE = [
@@ -474,10 +473,6 @@ async function switchLeague(league) {
   localStorage.setItem('bl_league', league);
   document.getElementById('lseg-bl1').classList.toggle('active', league === 'bl1');
   document.getElementById('lseg-bl2').classList.toggle('active', league === 'bl2');
-  document.getElementById('lseg-pokal').classList.toggle('active', league === 'dfb-pokal');
-  // DFB-Pokal hat keine Ligatabelle → Tab ausblenden
-  document.getElementById('tabTabelle').style.display = league === 'dfb-pokal' ? 'none' : '';
-  if (curView === 'tabelle') switchView('spiele');
   await initLeague();
 }
 
@@ -496,8 +491,6 @@ async function switchLeague(league) {
   // Korrekten League-Button aktivieren
   document.getElementById('lseg-bl1').classList.toggle('active', curLeague === 'bl1');
   document.getElementById('lseg-bl2').classList.toggle('active', curLeague === 'bl2');
-  document.getElementById('lseg-pokal').classList.toggle('active', curLeague === 'dfb-pokal');
-  document.getElementById('tabTabelle').style.display = curLeague === 'dfb-pokal' ? 'none' : '';
 
   // Favoriten-Button Badge aktualisieren
   updateFavsBtn();
@@ -666,8 +659,7 @@ async function openPanel(mid) {
 
   // Parallel: ensure tableData + goalgetters are loaded (liga-spezifisch)
   const isBL2 = curLeague === 'bl2';
-  const isPokal = curLeague === 'dfb-pokal';
-  const tblReady = isPokal ? true : isBL2 ? tableData2 : tableData;
+  const tblReady = isBL2 ? tableData2 : tableData;
   const ggCache = isBL2 ? goalGettersData2 : goalGettersData;
   const [, gg] = await Promise.all([
     tblReady ? Promise.resolve() : loadTable(),
@@ -680,7 +672,7 @@ async function openPanel(mid) {
   const goalGetters = gg || (isBL2 ? goalGettersData2 : goalGettersData) || [];
 
   // ── Tabellenstand ──
-  const activeTbl = isPokal ? null : isBL2 ? tableData2 : tableData;
+  const activeTbl = isBL2 ? tableData2 : tableData;
   function teamTableEntry(teamName) {
     if (!activeTbl) return null;
     const idx = activeTbl.findIndex(t=>t.teamName===teamName);
@@ -773,8 +765,6 @@ async function openPanel(mid) {
 
 // ── VIEW TOGGLE ──
 function switchView(v) {
-  // DFB-Pokal hat keine Tabelle
-  if (v === 'tabelle' && curLeague === 'dfb-pokal') v = 'spiele';
   curView = v;
   const isSpiele = v === 'spiele';
   document.getElementById('tabSpiele').classList.toggle('active', isSpiele);
@@ -793,10 +783,6 @@ function switchView(v) {
 // ── TABLE ──
 async function loadTable() {
   const el = document.getElementById('tableView');
-  if (curLeague === 'dfb-pokal') {
-    el.innerHTML = '<div class="state"><div class="ico">🏆</div><div class="lbl">DFB-Pokal — K.O.-Format, keine Tabelle</div></div>';
-    return;
-  }
   el.innerHTML = '<div class="state"><div class="spin"></div><div class="lbl">Lade Tabelle…</div></div>';
   if (curLeague === 'bl2') {
     if (!tableData2) {
@@ -975,7 +961,7 @@ async function manualRefresh() {
   clearTimeout(refreshTimer);
   delete cache[curGID];
   if (curLeague === 'bl2') { tableData2 = null; goalGettersData2 = null; }
-  else if (curLeague !== 'dfb-pokal') { tableData = null; goalGettersData = null; }
+  else { tableData = null; goalGettersData = null; }
   await loadMD(curGID);
   if (curView === 'tabelle') await loadTable();
   btn.classList.remove('spinning');
@@ -1000,9 +986,10 @@ async function autoRefresh() {
     renderMD();
     updateRefreshTs();
 
-    // Tabelle nach Abpfiff aktualisieren
+    // Tabelle bei laufenden Spielen (Live-Tabelle) und nach Abpfiff aktualisieren
+    const anyLive = hasLiveMatches(fresh);
     const anyFinished = fresh.some(m => m.matchIsFinished && prevSnap[m.matchID] && !prevSnap[m.matchID].finished);
-    if (anyFinished) {
+    if (anyLive || anyFinished) {
       if (curLeague === 'bl2') tableData2 = null; else tableData = null;
       if (curView === 'tabelle') loadTable();
     }
