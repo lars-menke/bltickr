@@ -223,6 +223,37 @@ app.get('/health', (req, res) => {
   res.json({ ok: true, subscribers: Object.keys(subscriptions).length, window: isMatchWindow() });
 });
 
+// ── Admin ──
+function adminAuth(req, res) {
+  const secret = process.env.ADMIN_SECRET;
+  if (secret && req.query.secret !== secret) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return false;
+  }
+  return true;
+}
+
+app.get('/admin/subscriptions', (req, res) => {
+  if (!adminAuth(req, res)) return;
+  const list = Object.entries(subscriptions).map(([key, s]) => ({
+    key,
+    endpoint: s.subscription.endpoint.slice(0, 60) + '…',
+    favorites: s.favorites,
+    createdAt: s.createdAt,
+  }));
+  res.json({ count: list.length, subscriptions: list });
+});
+
+app.delete('/admin/subscriptions/:key', (req, res) => {
+  if (!adminAuth(req, res)) return;
+  const { key } = req.params;
+  if (!subscriptions[key]) return res.status(404).json({ error: 'Nicht gefunden' });
+  delete subscriptions[key];
+  saveSubs();
+  console.log('[admin] Subscription gelöscht:', key);
+  res.json({ ok: true, key });
+});
+
 // ── Start ──
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
