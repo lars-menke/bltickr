@@ -1078,7 +1078,11 @@ async function subscribeToPush() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...subscription.toJSON(), favorites: [...favorites] }),
         });
-        if (res.ok) return 'push'; // Volles Push aktiv ✓
+        if (res.ok) {
+          const data = await res.json();
+          if (data.key) localStorage.setItem('bl_push_key', data.key);
+          return 'push'; // Volles Push aktiv ✓
+        }
         console.warn('[Push] Server:', res.status, '— nur In-Tab Notifications');
       } catch(e) {
         console.warn('[Push] push-subscribe nicht erreichbar:', e.message);
@@ -1232,9 +1236,11 @@ async function sendPushTest() {
   btn.disabled = true;
 
   try {
+    const pushKey = localStorage.getItem('bl_push_key');
     const res = await fetch(`${SERVER_URL}/push-test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: pushKey ? JSON.stringify({ key: pushKey }) : undefined,
     });
 
     if (res.status === 202 || res.ok) {
