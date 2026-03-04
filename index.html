@@ -471,6 +471,12 @@ async function switchLeague(league) {
     if (existingSub && Notification.permission === 'granted') {
       notificationsEnabled = true;
       updateNotifBtn();
+      // Server nach Neustart wieder informieren (fire & forget)
+      fetch(`${SERVER_URL}/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...existingSub.toJSON(), favorites: [...favorites] }),
+      }).catch(() => {});
     }
   }
 
