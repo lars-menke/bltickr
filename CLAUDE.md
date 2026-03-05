@@ -85,7 +85,7 @@ Die Versionsnummer wird in `server/package.json` gepflegt und bei jeder Änderun
 - **Minor** (z.B. `1.2.x → 1.3.0`): Neue Features, Optimierungen
 - **Major** (z.B. `1.x.x → 2.0.0`): Breaking Changes, Architekturwechsel
 
-Aktuelle Version: `1.6.1`
+Aktuelle Version: `1.6.2`
 
 ## Hinweise
 
