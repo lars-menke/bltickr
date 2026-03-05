@@ -333,7 +333,7 @@ main{padding-bottom:48px}
 </div>
 
 <script>
-const APP_VERSION = 'v1.6.0';
+const APP_VERSION = 'v1.6.1';
 // ── EMBEDDED REAL DATA (Spieltag 24, Stand 27.02.2026) ──
 // Embedded data intentionally empty — app always loads live from OpenLigaDB
 const EMBEDDED = {
@@ -1093,11 +1093,15 @@ async function registerSW() {
         const m = curMatches.find(x => x.matchID === e.data.matchId);
         if (m) openPanel(m.matchID);
       }
-      // Push kam während App offen war — als Toast anzeigen
+      // Push kam während App offen war — System-Notification sofort schließen
+      // und stattdessen In-App-Toast anzeigen (verhindert Doppel-Anzeige)
       if (e.data?.type === 'PUSH_EVENT' && e.data.data) {
         const { title, body } = e.data.data;
         const ico = title.startsWith('⚽') ? '⚽' : title.startsWith('🟢') ? '🟢' : '🏁';
         showToast(ico, title.replace(/^[^ ]+ /, ''), body);
+        swRegistration?.getNotifications?.()
+          .then(notifications => notifications.forEach(n => n.close()))
+          .catch(() => {});
       }
     });
 
