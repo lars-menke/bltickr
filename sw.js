@@ -44,29 +44,28 @@ self.addEventListener('push', e => {
     data: { matchId, url: '/' },
   };
 
+  // Immer System-Notification anzeigen — stellt Zustellung auch bei
+  // gesperrtem Bildschirm / Standby sicher.
+  // visibilityState-Check ist auf iOS unzuverlässig (kann 'visible' melden
+  // obwohl Bildschirm aus ist) und wurde daher entfernt.
   e.waitUntil(
-    // Prüfen ob App gerade offen und sichtbar ist
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
-      const appVisible = clientList.some(c =>
-        c.url.includes(self.location.origin) && c.visibilityState === 'visible'
-      );
-
-      if (appVisible) {
-        // App ist offen — nur In-App Toast via postMessage, keine System-Notification
-        console.log('[SW] App sichtbar — sende nur In-App Message');
+    self.registration.showNotification(title, options)
+      .then(() => {
+        console.log('[SW] Notification angezeigt:', title);
+        return clients.matchAll({ type: 'window', includeUncontrolled: true });
+      })
+      .then(clientList => {
+        // Falls App gerade aktiv sichtbar: postMessage senden.
+        // Die App schließt dann die System-Notification und zeigt stattdessen
+        // ihren In-App-Toast — verhindert Doppel-Anzeige.
         clientList.forEach(c => {
-          if (c.url.includes(self.location.origin)) {
+          if (c.url.includes(self.location.origin) && c.visibilityState === 'visible') {
+            console.log('[SW] App sichtbar — sende zusätzlich In-App Message');
             c.postMessage({ type: 'PUSH_EVENT', data });
           }
         });
-        return;
-      }
-
-      // App im Hintergrund — System-Notification anzeigen
-      return self.registration.showNotification(title, options)
-        .then(() => console.log('[SW] Notification angezeigt:', title))
-        .catch(err => console.error('[SW] showNotification Fehler:', err));
-    })
+      })
+      .catch(err => console.error('[SW] push handler Fehler:', err))
   );
 });
 

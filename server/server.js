@@ -108,6 +108,8 @@ function getScore(m) {
 // Separater Snapshot pro Liga
 const snapshots = { bl1: {}, bl2: {} };
 const lastChangeDates = { bl1: null, bl2: null };
+// Nach Server-Neustart: erster Poll baut nur Snapshot auf, feuert keine Events
+const warmupDone = new Set();
 
 async function pollLeague(leagueId) {
   const snap = snapshots[leagueId];
@@ -127,6 +129,14 @@ async function pollLeague(leagueId) {
     const s = getScore(m);
     newSnap[m.matchID] = { goalCount: (m.goals||[]).length, finished: m.matchIsFinished, live: isLive(m), g1: s.g1, g2: s.g2 };
   }
+  if (!warmupDone.has(leagueId)) {
+    snapshots[leagueId] = newSnap;
+    warmupDone.add(leagueId);
+    const live = matches.filter(m => isLive(m)).length;
+    console.log('[poll] ' + leagueId.toUpperCase() + ' Warmup abgeschlossen — ' + matches.length + ' Spiele, ' + live + ' live');
+    return;
+  }
+
   const events = [];
   for (const m of matches) {
     const p = snap[m.matchID], n = newSnap[m.matchID];
