@@ -333,7 +333,7 @@ main{padding-bottom:48px}
 </div>
 
 <script>
-const APP_VERSION = 'v1.6.1';
+const APP_VERSION = 'v1.6.2';
 // ── EMBEDDED REAL DATA (Spieltag 24, Stand 27.02.2026) ──
 // Embedded data intentionally empty — app always loads live from OpenLigaDB
 const EMBEDDED = {
@@ -900,6 +900,15 @@ let refreshTimer = null;
 let notificationsEnabled = false;
 // Snapshot: matchID → { goals: number, finished: bool }
 let matchSnapshot = {};
+// Dedup: verhindert doppelte Toasts wenn Push + autoRefresh dasselbe Event erkennen
+const recentToasts = new Map(); // dedupeKey → Ablauf-Timestamp
+function markToast(key) { recentToasts.set(key, Date.now() + 10 * 60 * 1000); }
+function isDupToast(key) {
+  const exp = recentToasts.get(key);
+  if (!exp) return false;
+  if (Date.now() > exp) { recentToasts.delete(key); return false; }
+  return true;
+}
 
 const REFRESH_INTERVAL = 60_000; // 60s
 
@@ -1041,7 +1050,8 @@ function diffAndNotify(prev, next, matches) {
 
     // Anstoß — match just went live
     if (!isLiveMatchBySnap(p, m) && isLiveMatch(m)) {
-      pushNotif('⚽ Anstoß', `${t1} – ${t2} hat begonnen`, 'anstoß');
+      const k = id + '-anstoß';
+      if (!isDupToast(k)) { markToast(k); pushNotif('⚽ Anstoß', `${t1} – ${t2} hat begonnen`, 'anstoß'); }
     }
 
     // Tor — new goal detected
@@ -1050,13 +1060,15 @@ function diffAndNotify(prev, next, matches) {
       for (const g of newGoals) {
         const ico = g.isOwnGoal ? '🔴' : g.isPenalty ? '🎯' : '⚽';
         const typ = g.isOwnGoal ? 'Eigentor' : g.isPenalty ? 'Elfmeter' : 'Tor';
-        pushNotif(`${ico} Tor! ${n.g1}:${n.g2}`, `${g.goalGetterName||'Unbekannt'} (${g.matchMinute}') · ${t1} – ${t2}`, 'tor');
+        const k = id + '-tor-' + n.g1 + '-' + n.g2;
+        if (!isDupToast(k)) { markToast(k); pushNotif(`${ico} Tor! ${n.g1}:${n.g2}`, `${g.goalGetterName||'Unbekannt'} (${g.matchMinute}') · ${t1} – ${t2}`, 'tor'); }
       }
     }
 
     // Abpfiff — match just finished
     if (!p.finished && n.finished) {
-      pushNotif('🏁 Abpfiff', `${t1} ${n.g1}:${n.g2} ${t2} · Endstand`, 'abpfiff');
+      const k = id + '-abpfiff';
+      if (!isDupToast(k)) { markToast(k); pushNotif('🏁 Abpfiff', `${t1} ${n.g1}:${n.g2} ${t2} · Endstand`, 'abpfiff'); }
     }
   }
 }
@@ -1096,7 +1108,9 @@ async function registerSW() {
       // Push kam während App offen war — System-Notification sofort schließen
       // und stattdessen In-App-Toast anzeigen (verhindert Doppel-Anzeige)
       if (e.data?.type === 'PUSH_EVENT' && e.data.data) {
-        const { title, body } = e.data.data;
+        const { title, body, dedupeKey } = e.data.data;
+        // dedupeKey markieren damit diffAndNotify dasselbe Event nicht nochmals anzeigt
+        if (dedupeKey) markToast(dedupeKey);
         const ico = title.startsWith('⚽') ? '⚽' : title.startsWith('🟢') ? '🟢' : '🏁';
         showToast(ico, title.replace(/^[^ ]+ /, ''), body);
         swRegistration?.getNotifications?.()
