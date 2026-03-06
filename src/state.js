@@ -1,7 +1,10 @@
 import { APP_CONFIG } from './config.js';
 
+const FAVORITES_KEY = 'bl_favorites';
+const LEAGUE_KEY = 'bl_league';
+
 export const state = {
-  currentLeague: APP_CONFIG.defaultLeague,
+  currentLeague: loadLeague(),
   favorites: loadFavorites(),
   matches: [],
   table: [],
@@ -10,7 +13,7 @@ export const state = {
 
 export function loadFavorites() {
   try {
-    const raw = localStorage.getItem('bltickr_favorites');
+    const raw = localStorage.getItem(FAVORITES_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -18,11 +21,17 @@ export function loadFavorites() {
 }
 
 export function saveFavorites(favorites) {
-  localStorage.setItem('bltickr_favorites', JSON.stringify(favorites));
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
   state.favorites = favorites;
 }
 
+export function loadLeague() {
+  const raw = localStorage.getItem(LEAGUE_KEY);
+  return APP_CONFIG.supportedLeagues.includes(raw) ? raw : APP_CONFIG.defaultLeague;
+}
+
 export function setLeague(league) {
+  localStorage.setItem(LEAGUE_KEY, league);
   state.currentLeague = league;
 }
 
