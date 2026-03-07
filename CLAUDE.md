@@ -1,6 +1,6 @@
 # BL TICK-R — CLAUDE.md
 
-Bundesliga Live-Ticker als PWA im "Lambdark" Design.
+Bundesliga Live-Ticker als PWA im "BROADCAST" Design.
 
 ## Projektstruktur
 
@@ -65,17 +65,61 @@ Polling nur in diesen Zeitfenstern aktiv:
 - Sonntag 13–22 Uhr
 - Montag 16–23 Uhr (BL2)
 
-## Design-System ("Lambdark")
+## Design-System ("BROADCAST")
+
+Inspiriert von TV-Broadcast-Ästhetik (Sky Sports, OneFootball). Dark Theme, warme Kontraste.
 
 ```css
---bg: #08080e       /* Hintergrund */
---acc: #e4ff3c      /* Akzent Gelb */
---acc2: #3cffe0     /* Akzent Cyan */
---green: #3cff8f
---orange: #ffb03c
---red: #ff4d6a
---purple: #c084fc
+/* Hintergründe */
+--bg:    #0a0a0f   /* fast schwarz, minimal warm */
+--s1:    #111118   /* Cards */
+--s2:    #1a1a26   /* Card-Header, Panel-Elemente */
+--s3:    #222235   /* Tiefste Ebene */
+--border:  #1e1e30
+--border2: #2a2a45
+
+/* Akzente */
+--acc:    #f5c518   /* IMDb-Gold (Score, Positions-Highlights) */
+--acc2:   #00d4ff   /* Blau-Cyan (CL-Zone, Links) */
+--green:  #00e676   /* Gewonnen */
+--orange: #ffb03c   /* EL-Zone, Relegation */
+--red:    #ff1744   /* Niederlage, Abstieg */
+--live:   #ff3d00   /* Echter Live-Orange (TV-Stil) */
+--purple: #c084fc   /* Relegations-Play-off */
 ```
+
+### Typografie
+
+| Schrift | Verwendung |
+|---|---|
+| Bebas Neue | Scores, Positionen, Headlines |
+| DM Mono | Spielzeiten, Minuten, Badges |
+| DM Sans 600 | Teamnamen, UI-Text |
+
+### Card-Layout (BROADCAST)
+
+```
+┌─────────────────────────────────┐
+│ ⬤ LIVE  (volle rote Leiste)     │  ← nur bei Live-Spielen
+├─────────────────────────────────┤
+│ [STATUS-CHIP]  📍 Stadion       │  ← c-head
+├──────────────┬──────────────────┤
+│ 🔵 FC Bayern │  Borussia BVB 🟡 │  ← c-body (1fr 1fr)
+│ FC Bayern    │    Dortmund      │    Logos 48px, Namen 1rem
+├─────────────────────────────────┤
+│         2 : 1                   │  ← c-score (volle Breite)
+│         Endstand                │    Bebas Neue 2.8rem
+└─────────────────────────────────┘
+```
+
+Live-Cards haben orangefarbene Border (`--live`) und Gradient-Overlay im Score-Bereich.
+
+### Tabelle
+
+- S/U/N (Siege/Unentschieden/Niederlagen) in Grün/Grau/Rot
+- Punkte: Bebas Neue 1.15rem in `--acc`
+- Zonen-Linien links: CL = `--acc2`, EL = `--orange`, Abstieg = `--red`
+
 Fonts: Bebas Neue (Headlines), DM Mono (Zahlen/Code), DM Sans (Text)
 
 ## Versionierung
