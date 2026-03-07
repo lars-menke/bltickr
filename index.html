@@ -847,7 +847,7 @@ function renderTable() {
       ? `<img src="${t.teamIconUrl}" alt="${t.shortName}" loading="lazy" onerror="this.outerHTML='<span>${t.shortName.substring(0,3).toUpperCase()}</span>'">`
       : `<span>${t.shortName.substring(0,3).toUpperCase()}</span>`;
     return `<div class="tbl-row ${zone}">
-      <div class="t-pos ${curLeague==='bl2'?pos<=2:pos<=4?'top':''}">${pos}</div>
+      <div class="t-pos ${curLeague==='bl2'?pos<=2?'top':'':pos<=4?'top':''}">${pos}</div>
       <div class="t-logo">${logoInner}</div>
       <div class="t-name">${t.teamName}</div>
       <div class="t-val">${t.matches}</div>
@@ -1108,11 +1108,11 @@ async function registerSW() {
       // Push kam während App offen war — System-Notification sofort schließen
       // und stattdessen In-App-Toast anzeigen (verhindert Doppel-Anzeige)
       if (e.data?.type === 'PUSH_EVENT' && e.data.data) {
-        const { title, body, dedupeKey } = e.data.data;
+        const { title, body, type, dedupeKey } = e.data.data;
         // dedupeKey markieren damit diffAndNotify dasselbe Event nicht nochmals anzeigt
         if (dedupeKey) markToast(dedupeKey);
-        const ico = title.startsWith('⚽') ? '⚽' : title.startsWith('🟢') ? '🟢' : '🏁';
-        showToast(ico, title.replace(/^[^ ]+ /, ''), body);
+        const ico = type === 'tor' ? '⚽' : type === 'anstoß' ? '🟢' : '🏁';
+        showToast(ico, title, body);
         swRegistration?.getNotifications?.()
           .then(notifications => notifications.forEach(n => n.close()))
           .catch(() => {});
