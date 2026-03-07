@@ -1,4 +1,5 @@
 import express from 'express';
+import { adminAuth } from '../utils/adminAuth.js';
 
 export function createPushTestRouter({ store, pushService }) {
   const router = express.Router();
@@ -11,6 +12,10 @@ export function createPushTestRouter({ store, pushService }) {
     }
 
     const filterKey = req.query.key || req.body?.key;
+
+    // Broadcast an alle Subscriber → nur mit Admin-Secret
+    if (!filterKey && !adminAuth(req, res)) return;
+
     const keys = filterKey
       ? store.get(filterKey)
         ? [filterKey]

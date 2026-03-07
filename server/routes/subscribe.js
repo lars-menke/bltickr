@@ -3,14 +3,14 @@ import express from 'express';
 export function createSubscribeRouter(store) {
   const router = express.Router();
 
-  router.post('/subscribe', (req, res) => {
+  router.post('/subscribe', async (req, res) => {
     const sub = req.body;
 
     if (!sub?.endpoint) {
       return res.status(400).json({ error: 'Invalid subscription payload' });
     }
 
-    const key = store.add(sub);
+    const key = await store.add(sub);
 
     console.log(
       '[api] Neue Subscription:',

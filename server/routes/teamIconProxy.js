@@ -4,12 +4,20 @@ import { config } from '../config/index.js';
 export function createTeamIconProxyRouter() {
   const router = express.Router();
 
+  const ALLOWED_LEAGUES = new Set(['bl1', 'bl2', 'bl3']);
+
   router.get('/team-icon/:league/:season/:teamInfoId', async (req, res) => {
     try {
       const { league, season, teamInfoId } = req.params;
 
-      if (!league || !season || !teamInfoId) {
-        return res.status(400).json({ error: 'Missing route params' });
+      if (!ALLOWED_LEAGUES.has(league)) {
+        return res.status(400).json({ error: 'Invalid league' });
+      }
+      if (!/^\d{4}$/.test(season)) {
+        return res.status(400).json({ error: 'Invalid season' });
+      }
+      if (!/^\d+$/.test(teamInfoId)) {
+        return res.status(400).json({ error: 'Invalid teamInfoId' });
       }
 
       const teamsRes = await fetch(

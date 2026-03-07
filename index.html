@@ -333,12 +333,10 @@ main{padding-bottom:48px}
 </div>
 
 <script>
-const APP_VERSION = 'v1.6.2';
-// ── EMBEDDED REAL DATA (Spieltag 24, Stand 27.02.2026) ──
-// Embedded data intentionally empty — app always loads live from OpenLigaDB
+const APP_VERSION = 'v1.7.0';
+function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
 const EMBEDDED = {
   groups: Array.from({length:34},(_, i)=>({groupOrderID:i+1,groupName:`${i+1}. Spieltag`})),
-  currentGroupID: 24,
   matches: {}
 };
 
@@ -347,27 +345,6 @@ const SEASON = '2025';
 const SERVER_URL = 'https://bltickr.fly.dev';
 let curLeague = (['bl1','bl2'].includes(localStorage.getItem('bl_league')) ? localStorage.getItem('bl_league') : 'bl1');
 
-// Embedded table fallback (2024/25 final standings — used when API unreachable)
-const EMBEDDED_TABLE = [
-  {teamInfoId:40,teamName:"FC Bayern München",shortName:"Bayern",teamIconUrl:"https://upload.wikimedia.org/wikipedia/commons/1/1f/Logo_FC_Bayern_M%C3%BCnchen_%282002%E2%80%932017%29.svg",points:82,goals:99,opponentGoals:32,matches:34,won:25,lost:2,draw:7,goalDiff:67},
-  {teamInfoId:6,teamName:"Bayer 04 Leverkusen",shortName:"Leverkusen",teamIconUrl:"https://www.bundesliga-reisefuehrer.de/sites/default/files/B04_Standard_Logo_RGB.png",points:69,goals:72,opponentGoals:43,matches:34,won:19,lost:3,draw:12,goalDiff:29},
-  {teamInfoId:91,teamName:"Eintracht Frankfurt",shortName:"Frankfurt",teamIconUrl:"https://i.imgur.com/X8NFkOb.png",points:60,goals:68,opponentGoals:46,matches:34,won:17,lost:8,draw:9,goalDiff:22},
-  {teamInfoId:7,teamName:"Borussia Dortmund",shortName:"Dortmund",teamIconUrl:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Borussia_Dortmund_logo.svg/560px-Borussia_Dortmund_logo.svg.png",points:57,goals:71,opponentGoals:51,matches:34,won:17,lost:11,draw:6,goalDiff:20},
-  {teamInfoId:112,teamName:"SC Freiburg",shortName:"Freiburg",teamIconUrl:"https://i.imgur.com/r3mvi0h.png",points:55,goals:49,opponentGoals:53,matches:34,won:16,lost:11,draw:7,goalDiff:-4},
-  {teamInfoId:81,teamName:"1. FSV Mainz 05",shortName:"Mainz",teamIconUrl:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Logo_Mainz_05.svg/1200px-Logo_Mainz_05.svg.png",points:52,goals:55,opponentGoals:43,matches:34,won:14,lost:10,draw:10,goalDiff:12},
-  {teamInfoId:1635,teamName:"RB Leipzig",shortName:"Leipzig",teamIconUrl:"https://i.imgur.com/Rpwsjz1.png",points:51,goals:53,opponentGoals:48,matches:34,won:13,lost:9,draw:12,goalDiff:5},
-  {teamInfoId:134,teamName:"SV Werder Bremen",shortName:"Bremen",teamIconUrl:"https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/SV-Werder-Bremen-Logo.svg/681px-SV-Werder-Bremen-Logo.svg.png",points:51,goals:54,opponentGoals:57,matches:34,won:14,lost:11,draw:9,goalDiff:-3},
-  {teamInfoId:16,teamName:"VfB Stuttgart",shortName:"Stuttgart",teamIconUrl:"https://i.imgur.com/v0tkpNx.png",points:50,goals:64,opponentGoals:53,matches:34,won:14,lost:12,draw:8,goalDiff:11},
-  {teamInfoId:87,teamName:"Borussia Mönchengladbach",shortName:"Gladbach",teamIconUrl:"https://i.imgur.com/KSIk0Eu.png",points:45,goals:55,opponentGoals:57,matches:34,won:13,lost:15,draw:6,goalDiff:-2},
-  {teamInfoId:131,teamName:"VfL Wolfsburg",shortName:"Wolfsburg",teamIconUrl:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Logo-VfL-Wolfsburg.svg/316px-Logo-VfL-Wolfsburg.svg.png",points:43,goals:56,opponentGoals:54,matches:34,won:11,lost:13,draw:10,goalDiff:2},
-  {teamInfoId:95,teamName:"FC Augsburg",shortName:"Augsburg",teamIconUrl:"https://i.imgur.com/sdE62e2.png",points:43,goals:35,opponentGoals:51,matches:34,won:11,lost:13,draw:10,goalDiff:-16},
-  {teamInfoId:80,teamName:"1. FC Union Berlin",shortName:"Union Berlin",teamIconUrl:"https://assets.dfb.de/uploads/000/018/232/small_union-Berlin.jpg",points:40,goals:35,opponentGoals:51,matches:34,won:10,lost:14,draw:10,goalDiff:-16},
-  {teamInfoId:98,teamName:"FC St. Pauli",shortName:"St. Pauli",teamIconUrl:"https://upload.wikimedia.org/wikipedia/commons/b/b3/Fc_st_pauli_logo.svg",points:32,goals:28,opponentGoals:41,matches:34,won:8,lost:18,draw:8,goalDiff:-13},
-  {teamInfoId:175,teamName:"TSG Hoffenheim",shortName:"Hoffenheim",teamIconUrl:"https://i.imgur.com/gF0PfEl.png",points:32,goals:46,opponentGoals:68,matches:34,won:7,lost:16,draw:11,goalDiff:-22},
-  {teamInfoId:199,teamName:"1. FC Heidenheim 1846",shortName:"Heidenheim",teamIconUrl:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/1._FC_Heidenheim_1846.svg/830px-1._FC_Heidenheim_1846.svg.png",points:29,goals:37,opponentGoals:64,matches:34,won:8,lost:21,draw:5,goalDiff:-27},
-  {teamInfoId:104,teamName:"Holstein Kiel",shortName:"Kiel",teamIconUrl:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Holstein_Kiel_Logo.svg/300px-Holstein_Kiel_Logo.svg.png",points:25,goals:49,opponentGoals:80,matches:34,won:6,lost:21,draw:7,goalDiff:-31},
-  {teamInfoId:129,teamName:"VfL Bochum",shortName:"Bochum",teamIconUrl:"https://i.imgur.com/5jy3Gfr.png",points:25,goals:33,opponentGoals:67,matches:34,won:6,lost:21,draw:7,goalDiff:-34},
-];
 
 const STADIUMS = {
   'FC Bayern München':'Allianz Arena, München','Borussia Dortmund':'Signal Iduna Park, Dortmund',
@@ -425,7 +402,7 @@ async function initLeague() {
     if (curLeague === 'bl1') {
       // Fallback zu eingebetteten Daten für BL1
       groups = EMBEDDED.groups;
-      curGID = EMBEDDED.currentGroupID;
+      curGID = EMBEDDED.groups[EMBEDDED.groups.length - 1].groupOrderID;
       usingEmbedded = true;
       for (const [gid, ms] of Object.entries(EMBEDDED.matches)) {
         cache[parseInt(gid)] = ms;
@@ -646,7 +623,7 @@ function renderCard(m) {
 
 function logo(team,right){
   const s=right?'margin-left:auto':'', a=abbr(team.teamName);
-  const inner=team.teamIconUrl?`<img src="${team.teamIconUrl}" alt="${a}" onerror="this.outerHTML='<span>${a}</span>'">`:`<span>${a}</span>`;
+  const inner=team.teamIconUrl?`<img src="${escAttr(team.teamIconUrl)}" alt="${escAttr(a)}" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span>${escAttr(a)}</span>')">`:`<span>${a}</span>`;
   return `<div class="tm-logo" style="${s}">${inner}</div>`;
 }
 
@@ -808,7 +785,7 @@ async function loadTable() {
       try {
         if (!usingEmbedded) tableData = await apiFetch(`/getbltable/bl1/${SEASON}`);
         else throw new Error('embedded');
-      } catch { tableData = EMBEDDED_TABLE; }
+      } catch { tableData = []; }
     }
   }
   renderTable();
@@ -844,7 +821,7 @@ function renderTable() {
     const diff = t.goalDiff > 0 ? `+${t.goalDiff}` : `${t.goalDiff}`;
     const diffCls = t.goalDiff > 0 ? 'pos' : t.goalDiff < 0 ? 'neg' : '';
     const logoInner = t.teamIconUrl
-      ? `<img src="${t.teamIconUrl}" alt="${t.shortName}" loading="lazy" onerror="this.outerHTML='<span>${t.shortName.substring(0,3).toUpperCase()}</span>'">`
+      ? `<img src="${escAttr(t.teamIconUrl)}" alt="${escAttr(t.shortName)}" loading="lazy" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span>${escAttr(t.shortName.substring(0,3).toUpperCase())}</span>')">`
       : `<span>${t.shortName.substring(0,3).toUpperCase()}</span>`;
     return `<div class="tbl-row ${zone}">
       <div class="t-pos ${curLeague==='bl2'?pos<=2?'top':'':pos<=4?'top':''}">${pos}</div>
@@ -1253,12 +1230,12 @@ async function openFavorites() {
   const [r1, r2] = await Promise.allSettled([
     tableData
       ? Promise.resolve(tableData)
-      : apiFetch(`/getbltable/bl1/${SEASON}`).then(d=>{tableData=d;return d;}).catch(()=>EMBEDDED_TABLE),
+      : apiFetch(`/getbltable/bl1/${SEASON}`).then(d=>{tableData=d;return d;}).catch(()=>[]),
     tableData2
       ? Promise.resolve(tableData2)
       : apiFetch(`/getbltable/bl2/${SEASON}`).then(d=>{tableData2=d;return d;}).catch(()=>[]),
   ]);
-  const teams1 = r1.status==='fulfilled' ? r1.value : EMBEDDED_TABLE;
+  const teams1 = r1.status==='fulfilled' ? r1.value : [];
   const teams2 = r2.status==='fulfilled' ? r2.value : [];
 
   function teamChips(teams) {

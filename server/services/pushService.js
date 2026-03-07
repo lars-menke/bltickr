@@ -57,7 +57,7 @@ export function createPushService({ vapidSubject, vapidPublicKey, vapidPrivateKe
             err.statusCode === 404 ||
             (err.statusCode === 400 && err.body?.includes('VapidPkHashMismatch'))
           ) {
-            if (store.remove(key)) {
+            if (await store.remove(key)) {
               removed += 1;
               console.log('[push] Subscription entfernt:', key);
             }
@@ -99,7 +99,7 @@ export function createPushService({ vapidSubject, vapidPublicKey, vapidPrivateKe
             err.statusCode === 404 ||
             (err.statusCode === 400 && err.body?.includes('VapidPkHashMismatch'))
           ) {
-            store.remove(key);
+            await store.remove(key);
             console.log('[push-test] Subscription entfernt:', key);
           }
           throw err;
