@@ -333,7 +333,7 @@ main{padding-bottom:48px}
 </div>
 
 <script>
-const APP_VERSION = 'v1.7.0';
+const APP_VERSION = 'v1.7.1';
 function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
 const EMBEDDED = {
   groups: Array.from({length:34},(_, i)=>({groupOrderID:i+1,groupName:`${i+1}. Spieltag`})),
@@ -1037,8 +1037,10 @@ function diffAndNotify(prev, next, matches) {
       for (const g of newGoals) {
         const ico = g.isOwnGoal ? '🔴' : g.isPenalty ? '🎯' : '⚽';
         const typ = g.isOwnGoal ? 'Eigentor' : g.isPenalty ? 'Elfmeter' : 'Tor';
-        const k = id + '-tor-' + n.g1 + '-' + n.g2;
-        if (!isDupToast(k)) { markToast(k); pushNotif(`${ico} Tor! ${n.g1}:${n.g2}`, `${g.goalGetterName||'Unbekannt'} (${g.matchMinute}') · ${t1} – ${t2}`, 'tor'); }
+        const s1 = g.scoreTeam1 ?? n.g1;
+        const s2 = g.scoreTeam2 ?? n.g2;
+        const k = id + '-tor-' + s1 + '-' + s2;
+        if (!isDupToast(k)) { markToast(k); pushNotif(`${ico} Tor! ${s1}:${s2}`, `${g.goalGetterName||'Unbekannt'} (${g.matchMinute}') · ${t1} – ${t2}`, 'tor'); }
       }
     }
 
