@@ -12,6 +12,7 @@ export function createHealthRouter({ store, pollService, healthState }) {
       uptimeSec: Math.round(process.uptime()),
       subscribers: store.count(),
       leagues: pollService.getLeagues(),
+      inGameWindow: pollService.isGameWindow(),
       lastPollAt: healthState.lastPollAt,
       lastPollOk: healthState.lastPollOk,
       lastPollError: healthState.lastPollError,
