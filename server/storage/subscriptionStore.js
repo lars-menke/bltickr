@@ -1,37 +1,34 @@
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
+import { createHash } from 'crypto';
 
 export function createSubscriptionStore(subsFile) {
   let subscriptions = {};
 
-  function load() {
+  async function load() {
     try {
-      if (fs.existsSync(subsFile)) {
-        subscriptions = JSON.parse(fs.readFileSync(subsFile, 'utf8'));
-        console.log('[store]', Object.keys(subscriptions).length, 'Subscriptions geladen');
-      }
+      const data = await fs.readFile(subsFile, 'utf8');
+      subscriptions = JSON.parse(data);
+      console.log('[store]', Object.keys(subscriptions).length, 'Subscriptions geladen');
     } catch (e) {
-      console.warn('[store] Ladefehler:', e.message);
+      if (e.code !== 'ENOENT') console.warn('[store] Ladefehler:', e.message);
     }
   }
 
-  function save() {
+  async function save() {
     try {
-      fs.mkdirSync(path.dirname(subsFile), { recursive: true });
-      fs.writeFileSync(subsFile, JSON.stringify(subscriptions, null, 2));
+      await fs.mkdir(path.dirname(subsFile), { recursive: true });
+      await fs.writeFile(subsFile, JSON.stringify(subscriptions, null, 2));
     } catch (e) {
       console.warn('[store] Speicherfehler:', e.message);
     }
   }
 
   function makeKey(endpoint) {
-    return Buffer.from(endpoint)
-      .toString('base64')
-      .replace(/[^a-zA-Z0-9]/g, '')
-      .slice(0, 64);
+    return createHash('sha256').update(endpoint).digest('hex');
   }
 
-  function add(body) {
+  async function add(body) {
     const { favorites: favs, ...pushSub } = body;
     const key = makeKey(pushSub.endpoint);
 
@@ -41,14 +38,14 @@ export function createSubscriptionStore(subsFile) {
       createdAt: new Date().toISOString(),
     };
 
-    save();
+    await save();
     return key;
   }
 
-  function remove(key) {
+  async function remove(key) {
     if (!subscriptions[key]) return false;
     delete subscriptions[key];
-    save();
+    await save();
     return true;
   }
 

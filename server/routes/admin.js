@@ -21,12 +21,12 @@ export function createAdminRouter(store) {
     });
   });
 
-  router.delete('/admin/subscriptions/:key', (req, res) => {
+  router.delete('/admin/subscriptions/:key', async (req, res) => {
     if (!adminAuth(req, res)) return;
 
     const { key } = req.params;
 
-    if (!store.remove(key)) {
+    if (!await store.remove(key)) {
       return res.status(404).json({ error: 'Nicht gefunden' });
     }
 

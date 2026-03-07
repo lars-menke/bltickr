@@ -20,7 +20,7 @@ const healthState = {
 };
 
 const store = createSubscriptionStore(config.subsFile);
-store.load();
+await store.load();
 
 const pushService = createPushService({
   vapidSubject: config.vapidSubject,
