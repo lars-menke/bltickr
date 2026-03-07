@@ -1,27 +1,8 @@
 import { APP_CONFIG } from './config.js';
-import {
-  state,
-  loadFavorites,
-  saveFavorites,
-  loadLeague,
-  setLeague,
-  setMatches,
-  setTable,
-  setGroup
-} from './state.js';
-import {
-  fetchJson,
-  fetchCurrentGroup,
-  fetchMatchData,
-  fetchTable,
-  subscribePush
-} from './api.js';
-import {
-  registerServiceWorker,
-  requestNotificationPermission,
-  ensurePushSubscription,
-  renewExistingSubscription
-} from './push.js';
+import { state, loadFavorites, saveFavorites, loadLeague, setLeague, setMatches, setTable, setGroup } from './state.js';
+import { fetchJson, fetchCurrentGroup, fetchMatchData, fetchTable, subscribePush } from './api.js';
+import { registerServiceWorker, requestNotificationPermission, ensurePushSubscription, renewExistingSubscription } from './push.js';
+import { loadTeamIconsForLeague, getResolvedTeamIcon } from './teamIcons.js';
 
 window.BLTICKR = {
   APP_CONFIG,
@@ -42,4 +23,6 @@ window.BLTICKR = {
   requestNotificationPermission,
   ensurePushSubscription,
   renewExistingSubscription,
+  loadTeamIconsForLeague,
+  getResolvedTeamIcon,
 };
