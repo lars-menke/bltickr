@@ -85,6 +85,18 @@ async function sendToAll(payload) {
   return sendToFiltered(payload, []); // leeres teams-Array → kein Filter
 }
 
+// ── Spielfenster ──
+function isMatchWindow() {
+  const now = new Date();
+  const day = now.getUTCDay(); // 0=So, 1=Mo, 5=Fr, 6=Sa
+  const h = now.getUTCHours();
+  if (day === 5) return h >= 13 && h < 23; // Freitag
+  if (day === 6) return h >= 13 && h < 23; // Samstag
+  if (day === 0) return h >= 13 && h < 22; // Sonntag
+  if (day === 1) return h >= 16 && h < 23; // Montag (BL2)
+  return false;
+}
+
 // ── Spiellogik ──
 const OPENLIGA_API = 'https://api.openligadb.de';
 const SEASON = '2025';
