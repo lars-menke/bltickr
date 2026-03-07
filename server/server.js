@@ -72,6 +72,10 @@ app.use(createTeamIconProxyRouter());
 app.listen(config.port, () => {
   console.log('[server] BL TICK-R läuft auf Port', config.port);
 
+  if (!config.adminSecret) {
+    console.warn('[security] ADMIN_SECRET nicht gesetzt — /admin und /push-test sind ohne Authentifizierung erreichbar!');
+  }
+
   setTimeout(() => {
     pollService.poll();
     setInterval(() => pollService.poll(), config.pollIntervalMs);
