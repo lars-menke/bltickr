@@ -1,3 +1,5 @@
+import { APP_CONFIG } from './config.js';
+
 const teamIconMaps = new Map();
 
 export async function loadTeamIconsForLeague({ league, season, fetchJson, apiBase }) {
@@ -16,7 +18,11 @@ export async function loadTeamIconsForLeague({ league, season, fetchJson, apiBas
 
 export function getResolvedTeamIcon({ league, season, team }) {
   const map = teamIconMaps.get(`${league}:${season}`);
-  const fromMap = map?.get(team?.teamInfoId);
+  const hasKnownIcon = map?.has(team?.teamInfoId);
 
-  return fromMap || team?.teamIconUrl || '';
+  if (hasKnownIcon && team?.teamInfoId) {
+    return `${APP_CONFIG.serverUrl}/team-icon/${league}/${season}/${team.teamInfoId}`;
+  }
+
+  return team?.teamIconUrl || '';
 }
