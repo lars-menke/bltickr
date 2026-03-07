@@ -12,6 +12,17 @@ export function createPollService({ config, pushService, healthState }) {
   const warmupDone = new Set();
   const leagues = ['bl1', 'bl2'];
 
+  function isGameWindow() {
+    const now = new Date();
+    const day = now.getUTCDay(); // 0=So, 1=Mo, ..., 5=Fr, 6=Sa
+    const h = now.getUTCHours();
+    if (day === 5) return h >= 13 && h < 23; // Freitag  13–23
+    if (day === 6) return h >= 13 && h < 23; // Samstag  13–23
+    if (day === 0) return h >= 13 && h < 22; // Sonntag  13–22
+    if (day === 1) return h >= 16 && h < 23; // Montag   16–23 (BL2)
+    return false;
+  }
+
   function isLive(match) {
     return !match.matchIsFinished && new Date(match.matchDateTimeUTC).getTime() <= Date.now();
   }
@@ -115,14 +126,16 @@ export function createPollService({ config, pushService, healthState }) {
         for (const g of (m.goals || []).slice(prev.goalCount)) {
           const ico = g.isOwnGoal ? '' : g.isPenalty ? '' : '⚽';
           const typ = g.isOwnGoal ? 'Eigentor' : g.isPenalty ? 'Elfmeter' : 'Tor';
+          const s1 = g.scoreTeam1 ?? next.g1;
+          const s2 = g.scoreTeam2 ?? next.g2;
 
           events.push({
             type: 'tor',
             title: `${t1} vs ${t2}`,
-            body: `${ico} Tor! ${next.g1}:${next.g2} (${g.matchMinute}')${leagueLabel}\n${g.goalGetterName || 'Unbekannt'} · ${typ}`,
+            body: `${ico} Tor! ${s1}:${s2} (${g.matchMinute}')${leagueLabel}\n${g.goalGetterName || 'Unbekannt'} · ${typ}`,
             matchId: m.matchID,
             teams,
-            dedupeKey: `${m.matchID}-tor-${next.g1}-${next.g2}`,
+            dedupeKey: `${m.matchID}-tor-${s1}-${s2}`,
           });
         }
       }
@@ -153,6 +166,11 @@ export function createPollService({ config, pushService, healthState }) {
   async function poll() {
     healthState.lastPollAt = new Date().toISOString();
 
+    if (!isGameWindow()) {
+      console.log('[poll] außerhalb Spielfenster — skip');
+      return;
+    }
+
     const results = await Promise.allSettled(
       leagues.map(id =>
         pollLeague(id).catch(err => {
@@ -181,5 +199,6 @@ export function createPollService({ config, pushService, healthState }) {
   return {
     poll,
     getLeagues,
+    isGameWindow,
   };
 }
