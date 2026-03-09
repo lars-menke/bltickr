@@ -23,21 +23,30 @@ export function createMatchDetailsRouter({ config }) {
       return res.status(400).json({ error: 'Ungültiges utcDate-Format' });
     }
 
+    if (!config.footballDataApiKey) {
+      console.warn('[match-details] FOOTBALL_DATA_API_KEY nicht gesetzt');
+      return res.status(503).json({ error: 'API-Key nicht konfiguriert' });
+    }
+
     try {
-      const fdRes = await fetch(
-        `${config.footballDataApiUrl}/v4/competitions/${code}/matches` +
-        `?matchday=${md}&season=${config.season}`,
-        {
-          headers: { 'X-Auth-Token': config.footballDataApiKey },
-          signal: AbortSignal.timeout(8000),
-        }
-      );
+      const url = `${config.footballDataApiUrl}/v4/competitions/${code}/matches?matchday=${md}&season=${config.season}`;
+      console.log(`[match-details] GET ${url}`);
+      const fdRes = await fetch(url, {
+        headers: { 'X-Auth-Token': config.footballDataApiKey },
+        signal: AbortSignal.timeout(8000),
+      });
       if (fdRes.status === 403) {
+        console.warn(`[match-details] 403 von fd.org — Liga ${code} im aktuellen Tier gesperrt?`);
         return res.status(403).json({ error: `API-Tier für ${code} nicht freigeschaltet` });
+      }
+      if (fdRes.status === 401) {
+        console.warn('[match-details] 401 — ungültiger API-Key');
+        return res.status(503).json({ error: 'Ungültiger API-Key' });
       }
       if (!fdRes.ok) throw new Error(`HTTP ${fdRes.status} von football-data.org`);
 
       const data = await fdRes.json();
+      console.log(`[match-details] ${data.matches?.length ?? 0} Spiele für MD${md}/${code}`);
 
       // Spiel per Anstoßzeit finden (Toleranz 30 Min)
       const match = (data.matches || []).find(m => {
@@ -46,8 +55,11 @@ export function createMatchDetailsRouter({ config }) {
       });
 
       if (!match) {
+        const dates = (data.matches||[]).map(m=>m.utcDate).join(', ');
+        console.warn(`[match-details] kein Match für ${utcDate} gefunden. Verfügbare Zeiten: ${dates}`);
         return res.status(404).json({ error: 'Kein passendes Spiel gefunden' });
       }
+      console.log(`[match-details] Match gefunden: ${match.homeTeam?.name} vs ${match.awayTeam?.name}, ${match.bookings?.length||0} Karten`);
 
       // Abgeschlossene Spiele können gecacht werden
       if (match.status === 'FINISHED') {
