@@ -333,7 +333,7 @@ main{padding-bottom:48px}
 </div>
 
 <script>
-const APP_VERSION = 'v1.8.0';
+const APP_VERSION = 'v1.8.1';
 function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
 const EMBEDDED = {
   groups: Array.from({length:34},(_, i)=>({groupOrderID:i+1,groupName:`${i+1}. Spieltag`})),
@@ -653,13 +653,18 @@ async function openPanel(mid) {
   const isBL2 = curLeague === 'bl2';
   const tblReady = isBL2 ? tableData2 : tableData;
   const ggCache = isBL2 ? goalGettersData2 : goalGettersData;
-  const [, gg] = await Promise.all([
+  const matchday = m.group?.groupOrderID || curGID;
+  const detailsUrl = `${SERVER_URL}/match-details?league=${curLeague}&matchday=${matchday}&utcDate=${encodeURIComponent(m.matchDateTimeUTC)}`;
+  const [, gg, matchDetails] = await Promise.all([
     tblReady ? Promise.resolve() : loadTable(),
     ggCache
       ? Promise.resolve(ggCache)
       : apiFetch(`/getgoalgetters/${curLeague}/${SEASON}`)
           .then(d=>{ if(isBL2) goalGettersData2=d; else goalGettersData=d; return d; })
-          .catch(()=>null)
+          .catch(()=>null),
+    (fin || live)
+      ? fetch(detailsUrl, {signal: AbortSignal.timeout(5000)}).then(r=>r.ok?r.json():null).catch(()=>null)
+      : Promise.resolve(null)
   ]);
   const goalGetters = gg || (isBL2 ? goalGettersData2 : goalGettersData) || [];
 
@@ -752,6 +757,28 @@ async function openPanel(mid) {
       <div class="sechd">Tore &amp; Torschützen${(fin||live)&&goals.length?' · '+goals.length+(goals.length===1?' Tor':' Tore'):''}</div>
       <div class="evlist">${evHtml}</div>
     </div>
+    ${(()=>{
+      const bookings = matchDetails?.bookings || [];
+      if (!(fin||live) || !bookings.length) return '';
+      const rows = bookings
+        .slice().sort((a,b)=>(a.minute||0)-(b.minute||0))
+        .map(b=>{
+          const ico = b.card==='RED_CARD'?'🟥':b.card==='YELLOW_RED_CARD'?'🟨🟥':'🟨';
+          const typ = b.card==='RED_CARD'?'Rote Karte':b.card==='YELLOW_RED_CARD'?'Gelb-Rot':'Gelbe Karte';
+          return `<div class="evrow">
+            <div class="evmin">${b.minute||'?'}'</div>
+            <div class="evico">${ico}</div>
+            <div>
+              <div class="evp">${b.player?.name||'Unbekannt'}</div>
+              <div class="evd">${typ}</div>
+            </div>
+          </div>`;
+        }).join('');
+      return `<div class="sec">
+        <div class="sechd">Karten · ${bookings.length}</div>
+        <div class="evlist">${rows}</div>
+      </div>`;
+    })()}
   `;
 }
 
