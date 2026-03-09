@@ -1,13 +1,22 @@
-// BL TICK-R — Service Worker v2
-// Handles Web Push messages and shows browser notifications
+// BL TICK-R — Service Worker v3
+// Handles Web Push messages, shows browser notifications, caches app shell
 
-const CACHE_NAME = 'bl-ticker-v3';
+const CACHE_NAME = 'bl-ticker-v4';
+const APP_SHELL = [
+  '/bltickr/',
+  '/bltickr/manifest.json',
+  '/bltickr/icon-192.svg',
+];
 
 // ── Install & activate ──
 // skipWaiting + claim stellt sicher dass der neue SW sofort aktiv wird
 self.addEventListener('install', e => {
-  console.log('[SW] install');
-  self.skipWaiting();
+  console.log('[SW] install — app shell cachen');
+  e.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(APP_SHELL).catch(err => console.warn('[SW] Shell-Cache Fehler:', err)))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
@@ -16,6 +25,28 @@ self.addEventListener('activate', e => {
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     ).then(() => clients.claim())
+  );
+});
+
+// ── Fetch — Cache-First für App-Shell, Network-First für alles andere ──
+self.addEventListener('fetch', e => {
+  const url = e.request.url;
+  // Nur GET-Requests und keine externen APIs cachen
+  if (e.request.method !== 'GET') return;
+  if (url.includes('openligadb.de') || url.includes('fly.dev') || url.includes('football-data.org')) return;
+
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).then(response => {
+        // Nur erfolgreiche same-origin Antworten cachen
+        if (response.ok && response.type === 'basic') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+        }
+        return response;
+      });
+    })
   );
 });
 

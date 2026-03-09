@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="vapid-public-key" content="BEEsDkDCI4kgL_rCvJvqxjr2OmjWhY4_BRPjAMqAB_UayX3x0ygogmiJ7aTlKB3f36XskIm1s-LHXXfkgFIhZq4">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -218,28 +219,29 @@ main{padding-bottom:48px}
 </head>
 <body>
 
-<!-- SPLASH -->
-<div id="splash">
-  <svg class="spl-logo" width="72" height="72" viewBox="0 0 100 100">
+<!-- SVG-Symbol: einmalig definiert, via <use> referenziert -->
+<svg style="display:none" aria-hidden="true">
+  <symbol id="bltickr-logo" viewBox="0 0 100 100">
     <rect width="100" height="100" fill="#08080e"/>
-    <!-- Outer hexagon frame -->
     <polygon points="50,6 88,28 88,72 50,94 12,72 12,28" stroke="#e4ff3c" stroke-width="2.5" fill="none"/>
-    <!-- Football: central pentagon -->
     <polygon points="50,36 58,42 55,52 45,52 42,42" stroke="#e4ff3c" stroke-width="1.8" fill="none"/>
-    <!-- Football: surrounding hexagon patches -->
     <polygon points="50,22 60,28 60,36 50,36 42,28" stroke="#e4ff3c" stroke-width="1.4" fill="rgba(228,255,60,0.07)"/>
     <polygon points="60,36 70,38 72,48 62,54 55,52 58,42" stroke="#e4ff3c" stroke-width="1.4" fill="rgba(228,255,60,0.07)"/>
     <polygon points="58,54 62,64 52,70 44,64 45,52 55,52" stroke="#e4ff3c" stroke-width="1.4" fill="rgba(228,255,60,0.07)"/>
     <polygon points="42,42 45,52 44,64 34,62 28,52 30,40" stroke="#e4ff3c" stroke-width="1.4" fill="rgba(228,255,60,0.07)"/>
     <polygon points="40,28 50,22 58,28 55,36 42,36 38,30" stroke="#e4ff3c" stroke-width="1.4" fill="rgba(228,255,60,0.07)"/>
-    <!-- Corner dots -->
     <circle cx="50" cy="6"  r="2.5" fill="#3cffe0"/>
     <circle cx="88" cy="28" r="2.5" fill="#3cffe0"/>
     <circle cx="88" cy="72" r="2.5" fill="#3cffe0"/>
     <circle cx="50" cy="94" r="2.5" fill="#3cffe0"/>
     <circle cx="12" cy="72" r="2.5" fill="#3cffe0"/>
     <circle cx="12" cy="28" r="2.5" fill="#3cffe0"/>
-  </svg>
+  </symbol>
+</svg>
+
+<!-- SPLASH -->
+<div id="splash">
+  <svg class="spl-logo" width="72" height="72"><use href="#bltickr-logo"/></svg>
   <div class="spl-name">BL TICK-R</div>
   <div class="spl-sub">Bundesliga 2025 / 26</div>
   <div class="spl-bar"></div>
@@ -247,22 +249,7 @@ main{padding-bottom:48px}
 
 <!-- HEADER -->
 <header>
-  <svg class="hdr-logo" viewBox="0 0 100 100">
-    <rect width="100" height="100" fill="#08080e"/>
-    <polygon points="50,6 88,28 88,72 50,94 12,72 12,28" stroke="#e4ff3c" stroke-width="2.5" fill="none"/>
-    <polygon points="50,36 58,42 55,52 45,52 42,42" stroke="#e4ff3c" stroke-width="1.8" fill="none"/>
-    <polygon points="50,22 60,28 60,36 50,36 42,28" stroke="#e4ff3c" stroke-width="1.4" fill="rgba(228,255,60,0.07)"/>
-    <polygon points="60,36 70,38 72,48 62,54 55,52 58,42" stroke="#e4ff3c" stroke-width="1.4" fill="rgba(228,255,60,0.07)"/>
-    <polygon points="58,54 62,64 52,70 44,64 45,52 55,52" stroke="#e4ff3c" stroke-width="1.4" fill="rgba(228,255,60,0.07)"/>
-    <polygon points="42,42 45,52 44,64 34,62 28,52 30,40" stroke="#e4ff3c" stroke-width="1.4" fill="rgba(228,255,60,0.07)"/>
-    <polygon points="40,28 50,22 58,28 55,36 42,36 38,30" stroke="#e4ff3c" stroke-width="1.4" fill="rgba(228,255,60,0.07)"/>
-    <circle cx="50" cy="6"  r="2.5" fill="#3cffe0"/>
-    <circle cx="88" cy="28" r="2.5" fill="#3cffe0"/>
-    <circle cx="88" cy="72" r="2.5" fill="#3cffe0"/>
-    <circle cx="50" cy="94" r="2.5" fill="#3cffe0"/>
-    <circle cx="12" cy="72" r="2.5" fill="#3cffe0"/>
-    <circle cx="12" cy="28" r="2.5" fill="#3cffe0"/>
-  </svg>
+  <svg class="hdr-logo" viewBox="0 0 100 100"><use href="#bltickr-logo"/></svg>
   <div>
     <div class="hdr-title">BL TICK-R</div>
     <div class="hdr-sub">Bundesliga 2025 / 26</div>
@@ -333,7 +320,7 @@ main{padding-bottom:48px}
 </div>
 
 <script>
-const APP_VERSION = 'v1.8.1';
+const APP_VERSION = 'v1.9.0';
 function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
 const EMBEDDED = {
   groups: Array.from({length:34},(_, i)=>({groupOrderID:i+1,groupName:`${i+1}. Spieltag`})),
@@ -421,6 +408,7 @@ async function initLeague() {
 
 // Findet per Binärsuche den Spieltag, dessen Mitteldatum am nächsten an heute liegt.
 // Cached Spieltage automatisch → loadMD braucht keinen Extra-Call für den Treffer.
+// localStorage-Cache: Beim nächsten Besuch werden nur 3 statt 6–9 API-Calls benötigt.
 async function findClosestGroupID(groups) {
   const now = new Date();
   const minGID = groups[0].groupOrderID;
@@ -437,7 +425,24 @@ async function findClosestGroupID(groups) {
     return new Date(ts.reduce((a,b)=>a+b,0) / ts.length);
   }
 
-  // Binärsuche: Grenze finden wo Spieltag-Mitteldatum today überschreitet
+  // Schnellpfad: gespeicherte GID prüfen (Nachbar-Check mit nur 1–3 Calls)
+  const savedGID = Number(localStorage.getItem('bl_gid_' + curLeague));
+  if (savedGID >= minGID && savedGID <= maxGID) {
+    const cSelf = await getCenter(savedGID);
+    if (cSelf) {
+      const dSelf = Math.abs(cSelf - now);
+      const cPrev = savedGID > minGID ? await getCenter(savedGID - 1) : null;
+      const cNext = savedGID < maxGID ? await getCenter(savedGID + 1) : null;
+      const dPrev = cPrev ? Math.abs(cPrev - now) : Infinity;
+      const dNext = cNext ? Math.abs(cNext - now) : Infinity;
+      if (dSelf <= dPrev && dSelf <= dNext) return savedGID;
+      const nextGID = dPrev < dNext ? savedGID - 1 : savedGID + 1;
+      localStorage.setItem('bl_gid_' + curLeague, String(nextGID));
+      return nextGID;
+    }
+  }
+
+  // Vollständige Binärsuche: Grenze finden wo Spieltag-Mitteldatum today überschreitet
   let lo = minGID, hi = maxGID;
   while (hi - lo > 2) {
     const mid = Math.floor((lo + hi) / 2);
@@ -453,6 +458,7 @@ async function findClosestGroupID(groups) {
     const d = Math.abs(c - now);
     if (d < bestDist) { bestDist = d; bestGID = gid; }
   }
+  localStorage.setItem('bl_gid_' + curLeague, String(bestGID));
   return bestGID;
 }
 
@@ -465,13 +471,19 @@ async function switchLeague(league) {
   await initLeague();
 }
 
-(async function init() {
-  setTimeout(()=>{
-    const s=document.getElementById('splash');
+// Mindestwartezeit für Splash (Animations-Finish), danach sofort ausblenden
+const splashStartTs = Date.now();
+function hideSplash() {
+  const elapsed = Date.now() - splashStartTs;
+  const minDelay = 900; // ms — Animations laufen bis ~1.3s, aber Mindest-UX
+  setTimeout(() => {
+    const s = document.getElementById('splash');
     s.classList.add('gone');
-    setTimeout(()=>s.style.display='none',450);
-  },2400);
+    setTimeout(() => s.style.display = 'none', 450);
+  }, Math.max(0, minDelay - elapsed));
+}
 
+(async function init() {
   // Version anzeigen
   document.querySelectorAll('.hdr-sub, .spl-sub').forEach(el => {
     el.textContent += ' · ' + APP_VERSION;
@@ -504,6 +516,14 @@ async function switchLeague(league) {
   }
 
   await initLeague();
+  hideSplash();
+
+  // ?match=ID aus Notification-Klick öffnen
+  const matchParam = Number(new URLSearchParams(location.search).get('match'));
+  if (matchParam) {
+    const m = curMatches.find(x => x.matchID === matchParam);
+    if (m) openPanel(m.matchID);
+  }
 })();
 
 function renderNav() {
@@ -605,7 +625,7 @@ function renderCard(m) {
   const t1=m.team1, t2=m.team2;
   const venue = m.location ? `${m.location.locationStadium}` : (STADIUMS[t1.teamName]||'Stadion');
 
-  return `<div class="card" onclick="openPanel(${m.matchID})">
+  return `<div class="card" id="card-${m.matchID}" onclick="openPanel(${m.matchID})">
     <div class="c-head">
       <div style="display:flex;align-items:center;gap:7px">
         <span class="chip ${chipCls}"><span class="cdot"></span>${chipTxt}</span>
@@ -628,10 +648,16 @@ function logo(team,right){
   return `<div class="tm-logo" style="${s}">${inner}</div>`;
 }
 
+const preloadedIconUrls = new Set();
 function preloadTeamIcons(matches) {
   for (const m of matches) {
-    if (m.team1?.teamIconUrl) { const i=new Image(); i.src=m.team1.teamIconUrl; }
-    if (m.team2?.teamIconUrl) { const i=new Image(); i.src=m.team2.teamIconUrl; }
+    for (const team of [m.team1, m.team2]) {
+      const url = team?.teamIconUrl;
+      if (url && !preloadedIconUrls.has(url)) {
+        preloadedIconUrls.add(url);
+        const i = new Image(); i.src = url;
+      }
+    }
   }
 }
 function abbr(n){return ABBR[n]||n.replace(/^(1\.\s|FC\s|SV\s|VfL\s|VfB\s|TSG\s|SC\s)/,'').substring(0,3).toUpperCase()}
@@ -736,13 +762,13 @@ async function openPanel(mid) {
   document.getElementById('pbody').innerHTML=`
     <div class="phero">
       <div class="pteam">
-        <div class="plogo">${t1.teamIconUrl?`<img src="${t1.teamIconUrl}" alt="">`:''}</div>
+        <div class="plogo">${t1.teamIconUrl?`<img src="${escAttr(t1.teamIconUrl)}" alt="">`:''}</div>
         <div class="pname">${t1.teamName}</div>
         <div class="pabb">${abbr(t1.teamName)}</div>
       </div>
       <div class="pscore">${scoreHtml}${htNote}</div>
       <div class="pteam r">
-        <div class="plogo">${t2.teamIconUrl?`<img src="${t2.teamIconUrl}" alt="">`:''}</div>
+        <div class="plogo">${t2.teamIconUrl?`<img src="${escAttr(t2.teamIconUrl)}" alt="">`:''}</div>
         <div class="pname r">${t2.teamName}</div>
         <div class="pabb" style="text-align:right">${abbr(t2.teamName)}</div>
       </div>
@@ -931,7 +957,14 @@ function loadSnapshot() {
 let matchSnapshot = loadSnapshot(); // beim Start wiederherstellen (verhindert Doppel-Toast)
 // Dedup: verhindert doppelte Toasts wenn Push + autoRefresh dasselbe Event erkennen
 const recentToasts = new Map(); // dedupeKey → Ablauf-Timestamp
-function markToast(key) { recentToasts.set(key, Date.now() + 10 * 60 * 1000); }
+function markToast(key) {
+  recentToasts.set(key, Date.now() + 10 * 60 * 1000);
+  // Abgelaufene Einträge bereinigen wenn Map zu groß wird
+  if (recentToasts.size > 100) {
+    const now = Date.now();
+    for (const [k, exp] of recentToasts) { if (now > exp) recentToasts.delete(k); }
+  }
+}
 function isDupToast(key) {
   const exp = recentToasts.get(key);
   if (!exp) return false;
@@ -1020,6 +1053,30 @@ async function manualRefresh() {
   updateRefreshTs();
 }
 
+// ── Gezieltes Karten-Update (verhindert kompletten DOM-Rebuild beim Live-Refresh) ──
+function patchCards(fresh) {
+  const now = new Date();
+  let anyLive = false;
+  for (const m of fresh) {
+    const old = curMatches.find(x => x.matchID === m.matchID);
+    const oldRes = old?.matchResults?.find(r => r.resultTypeID === 2) ?? old?.matchResults?.[old.matchResults.length - 1];
+    const newRes = m.matchResults?.find(r => r.resultTypeID === 2) ?? m.matchResults?.[m.matchResults.length - 1];
+    const changed = !old
+      || m.matchIsFinished !== old.matchIsFinished
+      || (newRes?.pointsTeam1 ?? 0) !== (oldRes?.pointsTeam1 ?? 0)
+      || (newRes?.pointsTeam2 ?? 0) !== (oldRes?.pointsTeam2 ?? 0)
+      || (m.goals?.length ?? 0) !== (old.goals?.length ?? 0);
+    if (changed) {
+      const el = document.getElementById(`card-${m.matchID}`);
+      if (el) el.outerHTML = renderCard(m);
+    }
+    if (!m.matchIsFinished && new Date(m.matchDateTimeUTC) <= now) anyLive = true;
+  }
+  if (anyLive) liveGID = curGID;
+  else if (liveGID === curGID) liveGID = null;
+  updateLiveBadge();
+}
+
 // ── Auto refresh (silent) ──
 async function autoRefresh() {
   if (usingEmbedded) return;
@@ -1027,7 +1084,6 @@ async function autoRefresh() {
   try {
     const fresh = await apiFetch(`/getmatchdata/${curLeague}/${SEASON}/${curGID}`);
     cache[curGID] = fresh;
-    curMatches = fresh;
 
     // Diff against previous snapshot
     const newSnap = buildSnapshot(fresh);
@@ -1036,7 +1092,13 @@ async function autoRefresh() {
     saveSnapshot(matchSnapshot);
 
     preloadTeamIcons(fresh);
-    renderMD();
+    // Nur geänderte Karten neu rendern statt komplettes DOM ersetzen
+    if (document.getElementById(`card-${fresh[0]?.matchID}`)) {
+      patchCards(fresh);
+    } else {
+      renderMD();
+    }
+    curMatches = fresh;
     updateRefreshTs();
 
     // Tabelle bei laufenden Spielen (Live-Tabelle) und nach Abpfiff aktualisieren
