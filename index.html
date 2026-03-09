@@ -653,8 +653,7 @@ async function openPanel(mid) {
   const isBL2 = curLeague === 'bl2';
   const tblReady = isBL2 ? tableData2 : tableData;
   const ggCache = isBL2 ? goalGettersData2 : goalGettersData;
-  const matchday = m.group?.groupOrderID || curGID;
-  const detailsUrl = `${SERVER_URL}/match-details?league=${curLeague}&matchday=${matchday}&utcDate=${encodeURIComponent(m.matchDateTimeUTC)}`;
+  const detailsUrl = `${SERVER_URL}/match-details?league=${curLeague}&utcDate=${encodeURIComponent(m.matchDateTimeUTC)}`;
   const [, gg, matchDetails] = await Promise.all([
     tblReady ? Promise.resolve() : loadTable(),
     ggCache
