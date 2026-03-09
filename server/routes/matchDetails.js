@@ -1,5 +1,9 @@
 import express from 'express';
 
+// In-Memory-Cache: { [key]: { data, cachedAt, finished } }
+// Abgeschlossene Spiele werden unbegrenzt gecacht; laufende nach 30s invalidiert.
+const detailsCache = new Map();
+
 export function createMatchDetailsRouter({ config }) {
   const router = express.Router();
 
@@ -22,6 +26,17 @@ export function createMatchDetailsRouter({ config }) {
     if (!config.footballDataApiKey) {
       console.warn('[match-details] FOOTBALL_DATA_API_KEY nicht gesetzt');
       return res.status(503).json({ error: 'API-Key nicht konfiguriert' });
+    }
+
+    // Cache prüfen
+    const cacheKey = `${league}-${utcDate}`;
+    const cached = detailsCache.get(cacheKey);
+    if (cached) {
+      const age = Date.now() - cached.cachedAt;
+      if (cached.finished || age < 30_000) {
+        res.setHeader('Cache-Control', cached.finished ? 'public, max-age=3600' : 'no-cache');
+        return res.json(cached.data);
+      }
     }
 
     // Datumsbereich: ±1 Tag um den Anstoß (fängt Zeitzonenunterschiede ab)
@@ -62,17 +77,18 @@ export function createMatchDetailsRouter({ config }) {
       }
       console.log(`[match-details] ✓ ${match.homeTeam?.name} vs ${match.awayTeam?.name} — ${match.bookings?.length ?? 0} Karten`);
 
-      if (match.status === 'FINISHED') {
-        res.setHeader('Cache-Control', 'public, max-age=3600');
-      } else {
-        res.setHeader('Cache-Control', 'no-cache');
-      }
-
-      res.json({
+      const finished = match.status === 'FINISHED';
+      const result = {
         goals: match.goals || [],
         bookings: match.bookings || [],
         status: match.status,
-      });
+      };
+
+      // Im Cache ablegen
+      detailsCache.set(cacheKey, { data: result, cachedAt: Date.now(), finished });
+
+      res.setHeader('Cache-Control', finished ? 'public, max-age=3600' : 'no-cache');
+      res.json(result);
     } catch (e) {
       console.error('[match-details]', e.message);
       res.status(502).json({ error: e.message });
