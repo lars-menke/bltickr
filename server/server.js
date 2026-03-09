@@ -9,6 +9,7 @@ import { createSubscribeRouter } from './routes/subscribe.js';
 import { createPushTestRouter } from './routes/pushTest.js';
 import { createAdminRouter } from './routes/admin.js';
 import { createTeamIconProxyRouter } from './routes/teamIconProxy.js';
+import { createMatchDetailsRouter } from './routes/matchDetails.js';
 
 const app = express();
 app.use(express.json());
@@ -68,6 +69,7 @@ app.use(createSubscribeRouter(store));
 app.use(createPushTestRouter({ store, pushService }));
 app.use(createAdminRouter(store));
 app.use(createTeamIconProxyRouter());
+app.use(createMatchDetailsRouter({ config }));
 
 app.listen(config.port, () => {
   console.log('[server] BL TICK-R läuft auf Port', config.port);
