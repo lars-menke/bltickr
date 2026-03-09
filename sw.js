@@ -37,10 +37,14 @@ self.addEventListener('push', e => {
     body,
     icon: '/icon-192.svg',
     badge: '/icon-192.svg',
-    tag: `blticker-${type || 'event'}-${matchId || Date.now()}`,
+    // dedupeKey als Tag → tor-update ersetzt original Tor-Notification,
+    // jede Karte bekommt einen eigenen Tag statt alle im selben Match zu stapeln
+    tag: data.dedupeKey
+      ? `blticker-${data.dedupeKey}`
+      : `blticker-${type || 'event'}-${matchId || Date.now()}`,
     renotify: true,
-    requireInteraction: type === 'tor',
-    vibrate: type === 'tor' ? [200, 100, 200] : [100],
+    requireInteraction: type === 'tor' || type === 'tor-update',
+    vibrate: (type === 'tor' || type === 'tor-update') ? [200, 100, 200] : [100],
     data: { matchId, url: '/' },
   };
 
