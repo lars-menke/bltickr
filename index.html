@@ -389,7 +389,7 @@ async function apiFetch(path) {
 
 async function initLeague() {
   // Reset per-league state
-  groups = []; curGID = null; cache = {}; curMatches = []; matchSnapshot = {}; liveGID = null;
+  groups = []; curGID = null; cache = {}; curMatches = []; matchSnapshot = {}; saveSnapshot({}); liveGID = null;
   clearTimeout(refreshTimer);
   document.getElementById('mdNav').innerHTML = '<div style="display:flex;align-items:center;padding:0 8px"><div class="spin" style="width:18px;height:18px;border-width:2px"></div></div>';
 
@@ -542,6 +542,7 @@ async function loadMD(gid) {
     }
     curMatches = cache[gid];
     matchSnapshot = buildSnapshot(curMatches);
+    saveSnapshot(matchSnapshot);
     preloadTeamIcons(curMatches);
     renderMD();
     scheduleRefresh(curMatches);
@@ -876,7 +877,21 @@ function renderTable() {
 let refreshTimer = null;
 let notificationsEnabled = false;
 // Snapshot: matchID → { goals: number, finished: bool }
-let matchSnapshot = {};
+// Snapshot in sessionStorage persistieren (verhindert Doppel-Push beim App-Öffnen)
+const SNAP_TTL = 15 * 60 * 1000; // 15 Minuten
+function saveSnapshot(snap) {
+  try { sessionStorage.setItem('bl_snap', JSON.stringify({ ts: Date.now(), snap })); } catch(e) {}
+}
+function loadSnapshot() {
+  try {
+    const raw = sessionStorage.getItem('bl_snap');
+    if (!raw) return {};
+    const { ts, snap } = JSON.parse(raw);
+    if (Date.now() - ts > SNAP_TTL) { sessionStorage.removeItem('bl_snap'); return {}; }
+    return snap;
+  } catch(e) { return {}; }
+}
+let matchSnapshot = loadSnapshot(); // beim Start wiederherstellen (verhindert Doppel-Toast)
 // Dedup: verhindert doppelte Toasts wenn Push + autoRefresh dasselbe Event erkennen
 const recentToasts = new Map(); // dedupeKey → Ablauf-Timestamp
 function markToast(key) { recentToasts.set(key, Date.now() + 10 * 60 * 1000); }
@@ -981,6 +996,7 @@ async function autoRefresh() {
     const newSnap = buildSnapshot(fresh);
     diffAndNotify(prevSnap, newSnap, fresh);
     matchSnapshot = newSnap;
+    saveSnapshot(matchSnapshot);
 
     preloadTeamIcons(fresh);
     renderMD();

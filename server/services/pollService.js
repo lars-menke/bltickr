@@ -96,7 +96,7 @@ export function createPollService({ config, pushService, healthState }) {
         live,
         'live'
       );
-      return;
+      return live > 0;
     }
 
     const events = [];
@@ -161,7 +161,12 @@ export function createPollService({ config, pushService, healthState }) {
     }
 
     snapshots[leagueId] = newSnap;
+
+    // Live-Status zurückgeben (für adaptives Scheduling)
+    return matches.some(m => isLive(m));
   }
+
+  let currentlyLive = false;
 
   async function poll() {
     healthState.lastPollAt = new Date().toISOString();
@@ -190,15 +195,26 @@ export function createPollService({ config, pushService, healthState }) {
 
     healthState.lastPollOk = true;
     healthState.lastPollError = null;
+
+    // Live-Status für adaptives Scheduling merken
+    currentlyLive = results.some(r => r.status === 'fulfilled' && r.value === true);
+    if (currentlyLive) {
+      console.log('[poll] Live-Spiele aktiv → nächster Poll in 25s');
+    }
   }
 
   function getLeagues() {
     return leagues;
   }
 
+  function nextInterval() {
+    return currentlyLive ? 25_000 : config.pollIntervalMs;
+  }
+
   return {
     poll,
     getLeagues,
     isGameWindow,
+    nextInterval,
   };
 }

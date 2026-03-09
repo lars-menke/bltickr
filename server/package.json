@@ -1,6 +1,6 @@
 {
   "name": "bl-tickr-server",
-  "version": "1.7.5",
+  "version": "1.7.6",
   "type": "module",
   "scripts": {
     "start": "node server.js"
