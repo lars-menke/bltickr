@@ -663,7 +663,9 @@ async function openPanel(mid) {
           .then(d=>{ if(isBL2) goalGettersData2=d; else goalGettersData=d; return d; })
           .catch(()=>null),
     (fin || live)
-      ? fetch(detailsUrl, {signal: AbortSignal.timeout(5000)}).then(r=>r.ok?r.json():null).catch(()=>null)
+      ? fetch(detailsUrl, {signal: AbortSignal.timeout(5000)})
+          .then(r=>{ if(!r.ok) console.warn('[bltickr] match-details HTTP',r.status); return r.ok?r.json():null; })
+          .catch(e=>{ console.warn('[bltickr] match-details Fehler:',e.message); return null; })
       : Promise.resolve(null)
   ]);
   const goalGetters = gg || (isBL2 ? goalGettersData2 : goalGettersData) || [];
@@ -758,19 +760,28 @@ async function openPanel(mid) {
       <div class="evlist">${evHtml}</div>
     </div>
     ${(()=>{
-      const bookings = matchDetails?.bookings || [];
-      if (!(fin||live) || !bookings.length) return '';
+      if (!(fin||live)) return '';
+      if (!matchDetails) {
+        console.warn('[bltickr] /match-details: kein Response (API-Key fehlt?)');
+        return '';
+      }
+      const bookings = matchDetails.bookings || [];
+      if (!bookings.length) return `<div class="sec">
+        <div class="sechd">Karten</div>
+        <div class="empty">Keine Karten</div>
+      </div>`;
       const rows = bookings
         .slice().sort((a,b)=>(a.minute||0)-(b.minute||0))
         .map(b=>{
           const ico = b.card==='RED_CARD'?'🟥':b.card==='YELLOW_RED_CARD'?'🟨🟥':'🟨';
           const typ = b.card==='RED_CARD'?'Rote Karte':b.card==='YELLOW_RED_CARD'?'Gelb-Rot':'Gelbe Karte';
+          const team = b.team?.shortName||b.team?.name||'';
           return `<div class="evrow">
             <div class="evmin">${b.minute||'?'}'</div>
             <div class="evico">${ico}</div>
             <div>
               <div class="evp">${b.player?.name||'Unbekannt'}</div>
-              <div class="evd">${typ}</div>
+              <div class="evd">${typ}${team?' · '+team:''}</div>
             </div>
           </div>`;
         }).join('');
