@@ -37,11 +37,10 @@ export function createPushService({ vapidSubject, vapidPublicKey, vapidPrivateKe
 
         try {
           const ttl =
-            payload.type === 'abpfiff'
-              ? 900
-              : payload.type === 'anstoß'
-                ? 600
-                : 300;
+            payload.type === 'abpfiff' ? 900 :
+            payload.type === 'anstoß'  ? 600 :
+            payload.type === 'karte'   ? 180 :
+            300;
 
           await sendNotification(subscription, payload, {
             TTL: ttl,
