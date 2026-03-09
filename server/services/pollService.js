@@ -12,6 +12,51 @@ export function createPollService({ config, pushService, healthState }) {
   const warmupDone = new Set();
   const leagues = ['bl1', 'bl2'];
 
+  // Retry-Queue für Tore ohne Torschützen
+  // Key: dedupeKey (`matchID-tor-s1-s2`) → Retry-Metadaten
+  const pendingScorers = new Map();
+
+  async function retryScorer(dedupeKey) {
+    const p = pendingScorers.get(dedupeKey);
+    if (!p) return;
+
+    try {
+      const match = await fetchJson(`${config.openLigaApi}/getmatchdata/${p.matchID}`);
+      const goal = (match.goals || []).find(
+        g => g.scoreTeam1 === p.s1 && g.scoreTeam2 === p.s2
+      );
+
+      if (goal?.goalGetterName?.trim()) {
+        pendingScorers.delete(dedupeKey);
+        const name = goal.goalGetterName.trim();
+        console.log('[scorer-retry] Torschütze gefunden:', name, 'für Match', p.matchID);
+        await pushService.sendToFiltered(
+          {
+            type: 'tor-update',
+            title: `${p.t1} vs ${p.t2}`,
+            body: `✏️ ${name} · ${p.typ} (${p.s1}:${p.s2}, ${p.matchMinute}')${p.leagueLabel}`,
+            matchId: p.matchID,
+            teams: p.teams,
+            dedupeKey: `${dedupeKey}-scorer`,
+          },
+          p.teams
+        );
+        return;
+      }
+    } catch (e) {
+      console.error('[scorer-retry] Fehler bei', dedupeKey, e.message);
+    }
+
+    p.attempts++;
+    if (p.attempts < 3) {
+      console.log(`[scorer-retry] Versuch ${p.attempts}/3 für Match ${p.matchID} — nächster in 45s`);
+      setTimeout(() => retryScorer(dedupeKey), 45_000);
+    } else {
+      pendingScorers.delete(dedupeKey);
+      console.log('[scorer-retry] Kein Torschütze nach 3 Versuchen — aufgegeben');
+    }
+  }
+
   function isGameWindow() {
     const now = new Date();
     const day = now.getUTCDay(); // 0=So, 1=Mo, ..., 5=Fr, 6=Sa
@@ -128,15 +173,35 @@ export function createPollService({ config, pushService, healthState }) {
           const typ = g.isOwnGoal ? 'Eigentor' : g.isPenalty ? 'Elfmeter' : 'Tor';
           const s1 = g.scoreTeam1 ?? next.g1;
           const s2 = g.scoreTeam2 ?? next.g2;
+          const scorer = g.goalGetterName?.trim();
+          const dedupeKey = `${m.matchID}-tor-${s1}-${s2}`;
 
           events.push({
             type: 'tor',
             title: `${t1} vs ${t2}`,
-            body: `${ico} Tor! ${s1}:${s2} (${g.matchMinute}')${leagueLabel}\n${g.goalGetterName || 'Unbekannt'} · ${typ}`,
+            body: scorer
+              ? `${ico} Tor! ${s1}:${s2} (${g.matchMinute}')${leagueLabel}\n${scorer} · ${typ}`
+              : `${ico} Tor! ${s1}:${s2} (${g.matchMinute}')${leagueLabel}`,
             matchId: m.matchID,
             teams,
-            dedupeKey: `${m.matchID}-tor-${s1}-${s2}`,
+            dedupeKey,
           });
+
+          // Torschütze fehlt → Retry nach 45s einplanen
+          if (!scorer && !pendingScorers.has(dedupeKey)) {
+            pendingScorers.set(dedupeKey, {
+              matchID: m.matchID,
+              s1, s2,
+              matchMinute: g.matchMinute,
+              typ, ico,
+              leagueLabel,
+              t1, t2,
+              teams,
+              attempts: 0,
+            });
+            setTimeout(() => retryScorer(dedupeKey), 45_000);
+            console.log(`[scorer-retry] Torschütze fehlt — Retry in 45s (Match ${m.matchID}, ${s1}:${s2})`);
+          }
         }
       }
 
