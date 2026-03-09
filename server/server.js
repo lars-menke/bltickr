@@ -76,8 +76,11 @@ app.listen(config.port, () => {
     console.warn('[security] ADMIN_SECRET nicht gesetzt — /admin und /push-test sind ohne Authentifizierung erreichbar!');
   }
 
-  setTimeout(() => {
-    pollService.poll();
-    setInterval(() => pollService.poll(), config.pollIntervalMs);
-  }, config.pollStartupDelayMs);
+  // Adaptives Polling: 25s bei Live-Spielen, sonst pollIntervalMs (60s)
+  function schedulePoll() {
+    pollService.poll().finally(() => {
+      setTimeout(schedulePoll, pollService.nextInterval());
+    });
+  }
+  setTimeout(schedulePoll, config.pollStartupDelayMs);
 });
