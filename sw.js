@@ -1,7 +1,7 @@
-// BL TICK-R — Service Worker v4
+// BL TICK-R — Service Worker v1.9.0
 // Handles Web Push messages, shows browser notifications, caches app shell
 
-const CACHE_NAME = 'bl-ticker-v4';
+const CACHE_NAME = 'bl-ticker-v1.9.0';
 const APP_SHELL = [
   '/bltickr/',
   '/bltickr/manifest.json',
