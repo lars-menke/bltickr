@@ -1357,9 +1357,9 @@ async function openFavorites() {
 
   function teamChips(teams) {
     return teams.map(t=>{
-      const esc = t.teamName.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      const escQ = t.teamName.replace(/"/g,'&quot;');
-      return `<button class="fav-chip${favorites.has(t.teamName)?' active':''}" onclick="toggleFavorite('${esc}')" data-team="${escQ}">${t.shortName||t.teamName}</button>`;
+      const escQ = escAttr(t.teamName);
+      // JSON.stringify erzeugt sicheres JS-String-Literal (escaped " \ etc.)
+      return `<button class="fav-chip${favorites.has(t.teamName)?' active':''}" onclick="toggleFavorite(${JSON.stringify(t.teamName)})" data-team="${escQ}">${t.shortName||t.teamName}</button>`;
     }).join('');
   }
 
@@ -1380,7 +1380,8 @@ async function openFavorites() {
 function toggleFavorite(teamName) {
   if (favorites.has(teamName)) favorites.delete(teamName);
   else favorites.add(teamName);
-  const btn = document.querySelector(`[data-team="${teamName.replace(/"/g,'&quot;')}"]`);
+  // dataset.team dekodiert HTML-Entities korrekt → robuster Vergleich mit rohem teamName
+  const btn = [...document.querySelectorAll('.fav-chip')].find(b => b.dataset.team === teamName);
   if (btn) btn.classList.toggle('active', favorites.has(teamName));
   saveFavorites();
 }
