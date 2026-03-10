@@ -46,7 +46,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 /* Subtiles Cyan-Grid */
 body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(50,212,240,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(50,212,240,0.025) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
 
-.app{max-width:420px;margin:0 auto;position:relative;z-index:1;min-height:100vh}
+.app{width:100%;position:relative;z-index:1;min-height:100vh}
 
 :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 
@@ -260,8 +260,14 @@ main{padding-bottom:48px}
 .evd{font-family:'DM Mono',monospace;font-size:.55rem;letter-spacing:.5px;color:var(--muted2);margin-top:2px}
 .empty{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:center;padding:18px}
 
+@media(min-width:769px){
+  .grid{grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;padding:0 32px 12px}
+  .day-hd{padding:18px 32px 8px}
+  .md-nav,.view-tabs{padding-left:32px;padding-right:32px}
+  #tableView{padding:24px 32px 48px}
+  .tbl-head,.tbl-row{grid-template-columns:32px 28px 1fr 32px 32px 32px 32px 52px 48px 48px;padding:10px 16px}
+}
 @media(max-width:480px){
-  .app{max-width:100%}
   header{padding:0 14px;gap:8px}
   .hdr-divider,.hdr-meta{display:none}
   .hdr-logo{width:24px;height:24px}
