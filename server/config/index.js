@@ -1,9 +1,7 @@
 export const config = {
   port: Number(process.env.PORT || 3000),
 
-  openLigaApi: process.env.OPENLIGA_API || 'https://api.openligadb.de', // weiterhin für teamIconProxy
-  footballDataApiUrl: process.env.FOOTBALL_DATA_API_URL || 'https://api.football-data.org',
-  footballDataApiKey: process.env.FOOTBALL_DATA_API_KEY || '',
+  openLigaApi: process.env.OPENLIGA_API || 'https://api.openligadb.de',
   season: process.env.SEASON || '2025',
 
   vapidSubject: process.env.VAPID_SUBJECT || '',

@@ -1,10 +1,10 @@
 import express from 'express';
+import { config } from '../config/index.js';
 
 // In-Memory-Cache: { [key]: { data, cachedAt, finished } }
-// Abgeschlossene Spiele werden unbegrenzt gecacht; laufende nach 30s invalidiert.
 const detailsCache = new Map();
 
-export function createMatchDetailsRouter({ config }) {
+export function createMatchDetailsRouter() {
   const router = express.Router();
 
   router.get('/match-details', async (req, res) => {
@@ -17,15 +17,9 @@ export function createMatchDetailsRouter({ config }) {
       return res.status(400).json({ error: 'utcDate fehlt' });
     }
 
-    const code = league.toUpperCase(); // bl1 → BL1
     const targetMs = new Date(utcDate).getTime();
     if (isNaN(targetMs)) {
       return res.status(400).json({ error: 'Ungültiges utcDate-Format' });
-    }
-
-    if (!config.footballDataApiKey) {
-      console.warn('[match-details] FOOTBALL_DATA_API_KEY nicht gesetzt');
-      return res.status(503).json({ error: 'API-Key nicht konfiguriert' });
     }
 
     // Cache prüfen
@@ -39,54 +33,35 @@ export function createMatchDetailsRouter({ config }) {
       }
     }
 
-    // Datumsbereich: ±1 Tag um den Anstoß (fängt Zeitzonenunterschiede ab)
-    const d = new Date(targetMs);
-    const dateFrom = new Date(d.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const dateTo   = new Date(d.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-
     try {
-      const url = `${config.footballDataApiUrl}/v4/competitions/${code}/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
-      console.log(`[match-details] GET ${url}`);
-      const fdRes = await fetch(url, {
-        headers: { 'X-Auth-Token': config.footballDataApiKey },
+      const url = `${config.openLigaApi}/getmatchdata/${league}`;
+      const matches = await fetch(url, {
+        headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(8000),
+      }).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status} von OpenLigaDB`);
+        return r.json();
       });
-      if (fdRes.status === 403) {
-        console.warn(`[match-details] 403 von fd.org — Liga ${code} im aktuellen Tier gesperrt?`);
-        return res.status(403).json({ error: `API-Tier für ${code} nicht freigeschaltet` });
-      }
-      if (fdRes.status === 401) {
-        console.warn('[match-details] 401 — ungültiger API-Key');
-        return res.status(503).json({ error: 'Ungültiger API-Key' });
-      }
-      if (!fdRes.ok) throw new Error(`HTTP ${fdRes.status} von football-data.org`);
 
-      const data = await fdRes.json();
-      console.log(`[match-details] ${data.matches?.length ?? 0} Spiele in [${dateFrom}…${dateTo}]`);
-
-      // Spiel per Anstoßzeit finden — Toleranz 3h (deckt Zeitzonenabweichungen ab)
-      const match = (data.matches || []).find(m => {
-        const diff = Math.abs(new Date(m.utcDate).getTime() - targetMs);
+      // Spiel per Anstoßzeit finden — Toleranz 3h
+      const match = (matches || []).find(m => {
+        const diff = Math.abs(new Date(m.matchDateTimeUTC).getTime() - targetMs);
         return diff < 3 * 60 * 60 * 1000;
       });
 
       if (!match) {
-        const times = (data.matches || []).map(m => m.utcDate).join(', ');
-        console.warn(`[match-details] kein Match für ${utcDate}. Verfügbare Zeiten: ${times}`);
         return res.status(404).json({ error: 'Kein passendes Spiel gefunden' });
       }
-      console.log(`[match-details] ✓ ${match.homeTeam?.name} vs ${match.awayTeam?.name} — ${match.bookings?.length ?? 0} Karten`);
 
-      const finished = match.status === 'FINISHED';
+      const finished = match.matchIsFinished === true;
+      // OpenLigaDB enthält keine Karten-Daten — bookings bleibt leer
       const result = {
         goals: match.goals || [],
-        bookings: match.bookings || [],
-        status: match.status,
+        bookings: [],
+        status: finished ? 'FINISHED' : 'live',
       };
 
-      // Im Cache ablegen
       detailsCache.set(cacheKey, { data: result, cachedAt: Date.now(), finished });
-
       res.setHeader('Cache-Control', finished ? 'public, max-age=3600' : 'no-cache');
       res.json(result);
     } catch (e) {

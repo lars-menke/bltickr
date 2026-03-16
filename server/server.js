@@ -69,7 +69,7 @@ app.use(createSubscribeRouter(store));
 app.use(createPushTestRouter({ store, pushService }));
 app.use(createAdminRouter(store));
 app.use(createTeamIconProxyRouter());
-app.use(createMatchDetailsRouter({ config }));
+app.use(createMatchDetailsRouter());
 
 app.listen(config.port, () => {
   console.log('[server] BL TICK-R läuft auf Port', config.port);
