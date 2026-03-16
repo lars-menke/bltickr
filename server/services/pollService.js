@@ -1,19 +1,11 @@
 export function createPollService({ config, pushService, healthState }) {
-  const snapshots = {};          // { [code]: { [matchId]: snapshot } }
+  const snapshots = {};       // { [leagueKey]: { [matchId]: { goalCount, state } } }
   const warmupDone = new Set();
-  const currentMatchday = {};    // { [code]: number }
-  const advancedMatchday = new Set();
 
   const leagues = [
-    { code: 'BL1', label: '' },
-    { code: 'BL2', label: ' · 2. BL' },
+    { key: 'bl1', label: '' },
+    { key: 'bl2', label: ' · 2. BL' },
   ];
-
-  // Retry-Queue für Tore ohne Torschützen
-  const pendingScorers = new Map();
-
-  const LIVE_STATUSES = new Set(['IN_PLAY', 'PAUSED']);
-  const DONE_STATUSES = new Set(['FINISHED', 'CANCELLED', 'POSTPONED', 'SUSPENDED', 'AWARDED']);
 
   function isGameWindow() {
     const now = new Date();
@@ -28,142 +20,72 @@ export function createPollService({ config, pushService, healthState }) {
 
   async function fetchJson(url) {
     const res = await fetch(url, {
-      headers: { 'X-Auth-Token': config.footballDataApiKey },
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(8000),
     });
-    if (res.status === 403) {
-      throw new Error(
-        `HTTP 403 bei ${url} — API-Schlüssel oder Tier prüfen (BL2 benötigt ggf. höheres Tier)`
-      );
-    }
     if (!res.ok) throw new Error(`HTTP ${res.status} bei ${url}`);
     return res.json();
   }
 
-  // Bestimmt, ob ein Tor dem Heimteam gutgeschrieben wird.
-  // Bei Eigentor: der Team-Eintrag ist das schießende Team → Punkt geht an Gegner.
-  function goesToHome(g, homeTeamId) {
-    return g.type === 'OWN_GOAL'
-      ? g.team?.id !== homeTeamId
-      : g.team?.id === homeTeamId;
+  // Leitet den Spielzustand aus OpenLigaDB-Feldern ab (kein explizites Status-Feld).
+  // 'live'     → Anpfiff war, Spiel noch nicht beendet, plausible Spielzeit
+  // 'finished' → matchIsFinished === true
+  // 'upcoming' → Anstoß liegt noch in der Zukunft (oder Spieldauer >140 min ohne finished-Flag)
+  function matchState(m, now) {
+    if (m.matchIsFinished) return 'finished';
+    const ko = new Date(m.matchDateTimeUTC);
+    const elapsedMin = (now - ko) / 60_000;
+    if (ko <= now && elapsedMin < 140) return 'live';
+    return 'upcoming';
   }
 
-  // Berechnet den laufenden Spielstand nach Tor mit Index `upToIndex`.
-  function calcRunningScore(goals, upToIndex, homeTeamId) {
-    let h = 0, a = 0;
-    for (let i = 0; i <= upToIndex; i++) {
-      if (goesToHome(goals[i], homeTeamId)) h++; else a++;
-    }
-    return { h, a };
-  }
+  async function pollLeague({ key, label }) {
+    const url = `${config.openLigaApi}/getmatchdata/${key}`;
+    const matches = await fetchJson(url);
+    const now = new Date();
 
-  // Retry: Torschütze für ein bereits gepushtes Tor nachtragen.
-  async function retryScorer(dedupeKey) {
-    const p = pendingScorers.get(dedupeKey);
-    if (!p) return;
-
-    try {
-      const data = await fetchJson(`${config.footballDataApiUrl}/v4/matches/${p.matchID}`);
-      const goals = data.goals || [];
-      const homeTeamId = data.homeTeam?.id;
-
-      for (let i = 0; i < goals.length; i++) {
-        const { h, a } = calcRunningScore(goals, i, homeTeamId);
-        if (h === p.s1 && a === p.s2) {
-          const g = goals[i];
-          if (g.scorer?.name?.trim()) {
-            pendingScorers.delete(dedupeKey);
-            const name = g.scorer.name.trim();
-            const ico = g.type === 'OWN_GOAL' ? '🔴' : '⚽';
-            const typ = g.type === 'OWN_GOAL' ? 'Eigentor' : g.type === 'PENALTY' ? 'Elfmeter' : 'Tor';
-            console.log('[scorer-retry] Torschütze gefunden:', name, 'für Match', p.matchID);
-            // dedupeKey identisch mit Tor-Push → SW ersetzt die Notification
-            await pushService.sendToFiltered(
-              {
-                type: 'tor-update',
-                title: `${p.t1} vs ${p.t2}`,
-                body: `${ico} Tor! ${p.s1}:${p.s2} (${g.minute}')${p.leagueLabel}\n${name} · ${typ}`,
-                matchId: p.matchID,
-                teams: p.teams,
-                dedupeKey,
-              },
-              p.teams
-            );
-            return;
-          }
-          break; // Tor gefunden, Schütze noch nicht bekannt
-        }
-      }
-    } catch (e) {
-      console.error('[scorer-retry] Fehler bei', dedupeKey, e.message);
-    }
-
-    p.attempts++;
-    if (p.attempts < 3) {
-      console.log(`[scorer-retry] Versuch ${p.attempts}/3 für Match ${p.matchID} — nächster in 45s`);
-      setTimeout(() => retryScorer(dedupeKey), 45_000);
-    } else {
-      pendingScorers.delete(dedupeKey);
-      console.log('[scorer-retry] Kein Torschütze nach 3 Versuchen — aufgegeben');
-    }
-  }
-
-  // Aktuellen Spieltag von football-data.org holen (einmalig pro Liga).
-  async function initLeague(code) {
-    const data = await fetchJson(`${config.footballDataApiUrl}/v4/competitions/${code}`);
-    currentMatchday[code] = data.currentSeason?.currentMatchday ?? 1;
-    console.log('[poll]', code, 'Spieltag init:', currentMatchday[code]);
-  }
-
-  async function pollLeague({ code, label }) {
-    if (currentMatchday[code] == null) await initLeague(code);
-    if (!snapshots[code]) snapshots[code] = {};
-    const snap = snapshots[code];
-
-    const data = await fetchJson(
-      `${config.footballDataApiUrl}/v4/competitions/${code}/matches` +
-      `?matchday=${currentMatchday[code]}&season=${config.season}`
-    );
-    const matches = data.matches || [];
+    if (!snapshots[key]) snapshots[key] = {};
+    const snap = snapshots[key];
 
     // Neuen Snapshot aufbauen
     const newSnap = {};
     for (const m of matches) {
-      newSnap[m.id] = {
-        status: m.status,
+      newSnap[m.matchID] = {
         goalCount: (m.goals || []).length,
-        bookingCount: (m.bookings || []).length,
+        state: matchState(m, now),
       };
     }
 
-    if (!warmupDone.has(code)) {
-      snapshots[code] = newSnap;
-      warmupDone.add(code);
-      const live = matches.filter(m => LIVE_STATUSES.has(m.status)).length;
-      console.log('[poll]', code, 'Warmup —', matches.length, 'Spiele,', live, 'live');
+    // Erster Poll = Warmup: Ausgangszustand speichern, keine Events auslösen
+    if (!warmupDone.has(key)) {
+      snapshots[key] = newSnap;
+      warmupDone.add(key);
+      const live = matches.filter(m => matchState(m, now) === 'live').length;
+      console.log('[poll]', key, 'Warmup —', matches.length, 'Spiele,', live, 'live');
       return live > 0;
     }
 
     const events = [];
 
     for (const m of matches) {
-      const prev = snap[m.id];
-      const next = newSnap[m.id];
+      const prev = snap[m.matchID];
+      const next = newSnap[m.matchID];
       if (!prev || !next) continue;
 
-      const t1 = m.homeTeam.shortName || m.homeTeam.name;
-      const t2 = m.awayTeam.shortName || m.awayTeam.name;
-      const teams = [m.homeTeam.name, m.awayTeam.name];
+      const t1 = m.team1.shortName || m.team1.teamName;
+      const t2 = m.team2.shortName || m.team2.teamName;
+      const teams = [m.team1.teamName, m.team2.teamName];
       const goals = m.goals || [];
 
       // ── Anstoß ─────────────────────────────────────────────────────────────
-      if (!LIVE_STATUSES.has(prev.status) && LIVE_STATUSES.has(next.status)) {
+      if (prev.state !== 'live' && next.state === 'live') {
         events.push({
           type: 'anstoß',
           title: `${t1} vs ${t2}`,
-          body: `Anpfiff${label}\nDas Spiel hat begonnen`,
-          matchId: m.id,
+          body: `⚽ Anpfiff${label}\nDas Spiel hat begonnen`,
+          matchId: m.matchID,
           teams,
-          dedupeKey: `${m.id}-anstoß`,
+          dedupeKey: `${m.matchID}-anstoß`,
         });
       }
 
@@ -171,98 +93,53 @@ export function createPollService({ config, pushService, healthState }) {
       if (next.goalCount > prev.goalCount) {
         for (let i = prev.goalCount; i < goals.length; i++) {
           const g = goals[i];
-          const { h: s1, a: s2 } = calcRunningScore(goals, i, m.homeTeam.id);
-          const ico = g.type === 'OWN_GOAL' ? '🔴' : '⚽';
-          const typ = g.type === 'OWN_GOAL' ? 'Eigentor' : g.type === 'PENALTY' ? 'Elfmeter' : 'Tor';
-          const scorer = g.scorer?.name?.trim();
-          const dedupeKey = `${m.id}-tor-${s1}-${s2}`;
+          const s1 = g.scoreTeam1 ?? 0;
+          const s2 = g.scoreTeam2 ?? 0;
+          const ico = g.isOwnGoal ? '🔴' : '⚽';
+          const typ = g.isOwnGoal ? 'Eigentor' : g.isPenalty ? 'Elfmeter' : 'Tor';
+          const scorer = g.goalGetterName?.trim() || '';
 
           events.push({
             type: 'tor',
             title: `${t1} vs ${t2}`,
             body: scorer
-              ? `${ico} Tor! ${s1}:${s2} (${g.minute}')${label}\n${scorer} · ${typ}`
-              : `${ico} Tor! ${s1}:${s2} (${g.minute}')${label}`,
-            matchId: m.id,
+              ? `${ico} Tor! ${s1}:${s2} (${g.matchMinute}')${label}\n${scorer} · ${typ}`
+              : `${ico} Tor! ${s1}:${s2} (${g.matchMinute}')${label}`,
+            matchId: m.matchID,
             teams,
-            dedupeKey,
-          });
-
-          if (!scorer && !pendingScorers.has(dedupeKey)) {
-            pendingScorers.set(dedupeKey, {
-              matchID: m.id, s1, s2,
-              matchMinute: g.minute, leagueLabel: label, t1, t2, teams,
-              attempts: 0,
-            });
-            setTimeout(() => retryScorer(dedupeKey), 45_000);
-            console.log(`[scorer-retry] Torschütze fehlt — Retry in 45s (Match ${m.id}, ${s1}:${s2})`);
-          }
-        }
-      }
-
-      // ── Karten ──────────────────────────────────────────────────────────────
-      if (next.bookingCount > prev.bookingCount) {
-        const bookings = m.bookings || [];
-        for (let i = prev.bookingCount; i < bookings.length; i++) {
-          const b = bookings[i];
-          const ico =
-            b.card === 'RED_CARD'        ? '🟥' :
-            b.card === 'YELLOW_RED_CARD' ? '🟨🟥' : '🟨';
-          const typ =
-            b.card === 'RED_CARD'        ? 'Rote Karte' :
-            b.card === 'YELLOW_RED_CARD' ? 'Gelb-Rot' : 'Gelbe Karte';
-
-          events.push({
-            type: 'karte',
-            title: `${t1} vs ${t2}`,
-            body: `${ico} ${typ} (${b.minute}')${label}\n${b.player?.name || 'Unbekannt'}`,
-            matchId: m.id,
-            teams,
-            dedupeKey: `${m.id}-karte-${b.minute}-${b.player?.id ?? i}`,
+            dedupeKey: `${m.matchID}-tor-${s1}-${s2}`,
           });
         }
       }
 
       // ── Abpfiff ─────────────────────────────────────────────────────────────
-      if (!DONE_STATUSES.has(prev.status) && next.status === 'FINISHED') {
-        const finalH = m.score?.fullTime?.home ?? 0;
-        const finalA = m.score?.fullTime?.away ?? 0;
+      if (prev.state !== 'finished' && next.state === 'finished') {
+        const res = m.matchResults?.find(r => r.resultTypeID === 2)
+          ?? m.matchResults?.[m.matchResults.length - 1];
+        const finalH = res?.pointsTeam1 ?? 0;
+        const finalA = res?.pointsTeam2 ?? 0;
         events.push({
           type: 'abpfiff',
           title: `${t1} vs ${t2}`,
-          body: `Abpfiff · ${finalH}:${finalA}${label}\nDas Spiel ist zu Ende`,
-          matchId: m.id,
+          body: `🏁 Abpfiff · ${finalH}:${finalA}${label}\nDas Spiel ist zu Ende`,
+          matchId: m.matchID,
           teams,
-          dedupeKey: `${m.id}-abpfiff`,
+          dedupeKey: `${m.matchID}-abpfiff`,
         });
       }
     }
 
     if (events.length > 0) {
-      console.log('[poll]', code, events.length, 'Events');
+      console.log('[poll]', key, events.length, 'Events');
     }
 
     for (const event of events) {
       await pushService.sendToFiltered(event, event.teams);
     }
 
-    snapshots[code] = newSnap;
+    snapshots[key] = newSnap;
 
-    // Spieltag-Wechsel: wenn alle Spiele beendet sind, nächsten Spieltag laden
-    const allDone =
-      matches.length > 0 &&
-      matches.every(m => DONE_STATUSES.has(m.status));
-
-    if (allDone && !advancedMatchday.has(code)) {
-      advancedMatchday.add(code);
-      currentMatchday[code]++;
-      snapshots[code] = {};
-      console.log('[poll]', code, 'Spieltag abgeschlossen → nächster Spieltag:', currentMatchday[code]);
-    } else if (!allDone) {
-      advancedMatchday.delete(code);
-    }
-
-    return matches.some(m => LIVE_STATUSES.has(m.status));
+    return matches.some(m => matchState(m, now) === 'live');
   }
 
   let currentlyLive = false;
@@ -276,9 +153,9 @@ export function createPollService({ config, pushService, healthState }) {
     }
 
     const results = await Promise.allSettled(
-      leagues.map(({ code, label }) =>
-        pollLeague({ code, label }).catch(err => {
-          console.error('[poll]', code, 'Fehler:', err.message);
+      leagues.map(({ key, label }) =>
+        pollLeague({ key, label }).catch(err => {
+          console.error('[poll]', key, 'Fehler:', err.message);
           throw err;
         })
       )
@@ -302,17 +179,12 @@ export function createPollService({ config, pushService, healthState }) {
   }
 
   function getLeagues() {
-    return leagues.map(l => l.code.toLowerCase());
+    return leagues.map(l => l.key);
   }
 
   function nextInterval() {
     return currentlyLive ? 25_000 : config.pollIntervalMs;
   }
 
-  return {
-    poll,
-    getLeagues,
-    isGameWindow,
-    nextInterval,
-  };
+  return { poll, getLeagues, isGameWindow, nextInterval };
 }
